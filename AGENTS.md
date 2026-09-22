@@ -3,7 +3,7 @@
 Read README.md, docs/ARCHITECTURE.md, docs/DEVELOPMENT.md and relevant docs/ACCEPTANCE.md checks before changes; verify current source. This is a standalone prototype;
 do not edit Disk Monitor, agent logs, native hooks, or credentials. Global settings
 are unchanged except the explicitly authorized Claude status-line observer documented
-in README.md. Preserve the prior footer and unrelated settings when maintaining it.
+in docs/USAGE.md. Preserve the prior footer and unrelated settings when maintaining it.
 
 Preserve these contracts:
 - Read-only sources. Writes go only to the monitor's own cache/build outputs.

@@ -44,7 +44,7 @@ For rollback, quit the new app and restore/launch the saved source-matched bundl
 Only restore private state if required, while stopped; doing so loses data collected
 after that backup. Never restore an entire old Claude settings file over newer settings.
 Observer uninstall restores only the saved original statusLine object, preserving
-all unrelated current settings. Detailed observer paths are in the README.
+all unrelated current settings. Detailed observer paths are in [Usage and data](USAGE.md#subscription-windows).
 
 ## Missing icon investigation
 

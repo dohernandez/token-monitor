@@ -1,6 +1,6 @@
 # Token Monitor architecture
 
-Read [README](../README.md) for the full user-facing data contracts and [agent rules](../AGENTS.md) before editing.
+Read [Usage and data](USAGE.md) for the full user-facing data contracts and [agent rules](../AGENTS.md) before editing.
 
 ## Source map
 
