@@ -75,3 +75,12 @@ or application menu can obscure it. See the recovery guide.
 Missing history, source schema changes, stale activity, multiple accounts, arbitrary
 paths and unresolved model aliases remain limitations. No billing accuracy claim,
 automatic cleanup, launch-at-login, or guaranteed complete 30-day history.
+
+## Distribution runtime
+
+The collector uses `Contents/Resources/python/bin/python3` with `-B -E -s`, ignoring
+Python environment variables and user site packages while retaining its bundled
+sibling modules. The runtime is downloaded only at build time from the exact
+release and SHA-256 in `scripts/python-runtime.json`; its license files are retained.
+App runtime makes no new network requests. Bundle IDs and user data locations stay unchanged.
+See [Releasing](RELEASING.md) for CI and optional observer setup.

@@ -49,6 +49,19 @@ class QuotaTests(unittest.TestCase):
         self.assertEqual(row['localUsage']['records'],0)
         self.assertAlmostEqual(row['localUsage']['startsAt'],self.now+3600-7*86400)
         self.assertIsNone(quotas.subscription_snapshot(self.db,self.state,self.now+4000)[0]['localUsage'])
+    def test_installer_explicit_interpreter_with_spaces(self):
+        import install_claude_observer as installer, sys, shlex
+        home=self.state/'new home';(home/'.claude').mkdir(parents=True)
+        settings=home/'.claude/settings.json'
+        old=dict(statusLine=dict(type='command',command='/bin/cat'),untouched=True)
+        settings.write_text(json.dumps(old))
+        interpreter=self.state/'Python Runtime'/'python3';interpreter.parent.mkdir();interpreter.symlink_to(sys.executable)
+        command=installer.install(home,Path(__file__).parent,str(interpreter))
+        self.assertEqual(shlex.split(command)[0],str(interpreter))
+        self.assertTrue(json.loads(settings.read_text())['untouched'])
+        installer.install(home,Path(__file__).parent,str(interpreter))
+        self.assertEqual(json.loads((home/'Library/Application Support/TokenMonitor/statusline-original.json').read_text()),old['statusLine'])
+
     def test_installer_and_footer_forwarding(self):
         import install_claude_observer as installer,subprocess,os
         home=self.state/'home';(home/'.claude').mkdir(parents=True)

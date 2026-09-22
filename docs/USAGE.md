@@ -87,7 +87,7 @@ the UI hides its percentage/bar and waits for a new report; it never assumes a r
 means 0% used. Countdown updates every 30 seconds while displayed. Missing windows
 remain unavailable. No network quota polling or credential access is implemented.
 The view reflects the latest locally observed account report; multiple subscription
-accounts are not separated in this draft.
+accounts are not separated in this version.
 
 Claude Code supplies five-hour and seven-day fields to its status-line command.
 `claude_statusline.py` captures only these numeric fields and the observation time,

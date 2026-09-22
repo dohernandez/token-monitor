@@ -6,7 +6,7 @@ Run from the project root, preserving the full build log:
 
 ```sh
 python3 -m unittest -v test_collector.py test_quotas.py
-./build.sh > build.log 2>&1
+sh build.sh > build.log 2>&1
 "build/Token Monitor.app/Contents/MacOS/TokenMonitor" --self-test
 codesign --verify --deep --strict "build/Token Monitor.app"
 ```
@@ -15,7 +15,10 @@ Check each exit code; a later passing command does not make an earlier failed bu
 successful. `--self-test` runs native formatting, quota warning and timer/preference
 checks without normal UI launch. Python fixtures use temporary sources/state.
 The CLT SwiftBridging workaround belongs only in the project's VFS overlay; never
-modify system module maps. Build overwrites the app bundle in place.
+modify system module maps. Build overwrites the app bundle in place unless
+`BUILD_DIR` selects an isolated directory. Building downloads a checksum-pinned
+Python runtime; the installed app uses that bundled interpreter. See
+[Releasing](RELEASING.md) for installer and branch-rule checks.
 
 ## Safe replacement and rollback
 
