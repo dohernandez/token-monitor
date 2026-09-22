@@ -28,10 +28,12 @@ def capture(raw,state):
 
 def main():
     state=Path.home()/'Library/Application Support/TokenMonitor'
-    command=json.loads((state/'statusline-original.json').read_text())['command']
+    original=json.loads((state/'statusline-original.json').read_text())
+    command=original['command'] if original is not None else None
     raw=sys.stdin.buffer.read()
     try:capture(raw,state)
     except Exception:pass # Monitoring must never prevent the existing footer.
+    if command is None:return 0
     result=subprocess.run(['/bin/sh','-c',command],input=raw)
     return result.returncode
 if __name__=='__main__':sys.exit(main())

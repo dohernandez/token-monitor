@@ -72,8 +72,7 @@ its own preferred position is seeded only when absent. Preserve later user place
 A live process or status-item isVisible=true is not proof of visible pixels: the notch
 or application menu can obscure it. See the recovery guide.
 
-Missing history, source schema changes, stale activity, multiple accounts, arbitrary
-paths and unresolved model aliases remain limitations. No billing accuracy claim,
+Missing history, source schema changes, stale activity, multiple accounts and unresolved model aliases remain limitations. No billing accuracy claim,
 automatic cleanup, launch-at-login, or guaranteed complete 30-day history.
 
 ## Distribution runtime
@@ -106,3 +105,34 @@ The build extractor writes regular files before creating any links, rejects dupl
 paths and entries beneath links, then resolves every link inside the extraction root.
 Hard links are unsupported. Nothing from an extracted runtime executes until validation
 has completed. The downloaded runtime checksum remains mandatory.
+
+## Sources and subscriptions setup
+
+Settings → Sources & subscriptions detects local clients on first use. Enable usage
+for Claude, Codex or OpenCode, choose custom session directories (or an OpenCode
+SQLite file), and enable Claude/Codex subscription reports independently. Choices
+save immediately in sourceConfiguration UserDefaults. Disabled sources leave the
+visible totals and badges; cached history remains under normal retention. Changing
+a location does not erase previously collected provider history. These controls
+configure local reports, not provider login, billing plans or account identities.
+
+Claude setup explicitly confirms before wrapping ~/.claude/settings.json. Existing
+command status lines and unrelated settings are preserved; no existing status line
+is also supported, recorded as null in the backup. No live observer is installed
+by builds/tests. Setup needed, Waiting for report and Connected (fresh local report)
+are distinct states; Connected is not proof of authentication or complete coverage.
+Custom Claude usage folders do not relocate observer settings. The observer uses
+the app's bundled Python; keep the app at the same location after setup. Disabling
+reports hides them but does not uninstall an existing observer.
+
+Handoff is optional and read-only. Turning it off suppresses cached handoff names
+and Active evidence, without changing parent/subagent accounting. No registry,
+agent instructions, credentials or source logs are edited. Multiple accounts still
+cannot be distinguished; reports and token totals are explicitly not account-specific.
+OpenCode subscription quotas are unsupported. Older versions ignore source settings.
+
+Acceptance: verify empty-Mac setup, one enabled provider, custom source location,
+disabled historical totals/alerts, name fallback without handoff, setup confirmation
+cancellation, and first Claude report. Automated fixtures cover config round-trip,
+source detection/filtering, parent totals without handoff, and observer installation
+with/without a prior status line. Native picker/setup interaction remains manual.
