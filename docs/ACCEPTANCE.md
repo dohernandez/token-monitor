@@ -19,6 +19,7 @@ retest runtime code. Successful compilation is not visual acceptance.
 
 ## Manual UI checks after relevant changes
 
+- Footer buttons match Disk Monitor: 22 × 28 point frames, 8 point spacing and 14 point outer padding.
 - One visible icon per app; retain native template tint and readable badge.
 - Restart preserves user icon placement; notch test requires actual visible UI,
   not only isVisible or a process check.

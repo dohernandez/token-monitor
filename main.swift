@@ -455,7 +455,7 @@ struct Dashboard:View {
                 }.buttonStyle(.plain).font(.system(size:11)).padding(.horizontal,14).padding(.vertical,10)
             }
             Divider()
-            HStack(spacing:9) {
+            HStack(spacing:8) {
                 if store.loading { ProgressView().controlSize(.small) }
                 VStack(alignment:.leading,spacing:3) {
                     Text(footerStatus).font(.system(size:10))
@@ -463,10 +463,10 @@ struct Dashboard:View {
                         .font(.system(size:9)).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button{store.refresh()}label:{Image(systemName:"arrow.clockwise")}.disabled(store.loading).help(page=="Usage" ? "Refresh usage":"Read latest local quota reports")
-                Button{settings=false;information.toggle()}label:{Image(systemName:"info.circle")}.help("About Token Monitor").accessibilityLabel("About Token Monitor")
-                Button{information=false;settings.toggle()}label:{Image(systemName:"gearshape")}.help("Settings").accessibilityLabel("Settings")
-                Button{NSApp.terminate(nil)}label:{Image(systemName:"power")}.help("Quit Token Monitor").accessibilityLabel("Quit Token Monitor")
+                Button{store.refresh()}label:{Image(systemName:"arrow.clockwise").frame(width:22,height:28)}.disabled(store.loading).help(page=="Usage" ? "Refresh usage":"Read latest local quota reports")
+                Button{settings=false;information.toggle()}label:{Image(systemName:"info.circle").frame(width:22,height:28)}.help("About Token Monitor").accessibilityLabel("About Token Monitor")
+                Button{information=false;settings.toggle()}label:{Image(systemName:"gearshape").frame(width:22,height:28)}.help("Settings").accessibilityLabel("Settings")
+                Button{NSApp.terminate(nil)}label:{Image(systemName:"power").frame(width:22,height:28)}.help("Quit Token Monitor").accessibilityLabel("Quit Token Monitor")
             }.buttonStyle(.plain).padding(14)
         }.frame(width:460,height:700).background(canvasColor).foregroundStyle(Color(white:0.88)).preferredColorScheme(.dark)
         .onChange(of:store.days){_,_ in store.expanded=[];store.refresh()}
