@@ -12,6 +12,24 @@ class CollectorTests(unittest.TestCase):
         self.db=sqlite3.connect(':memory:');self.db.executescript(c.SCHEMA)
         self.stamp=dt.datetime.now(dt.timezone.utc).isoformat()
     def tearDown(self): self.db.close();self.temp.cleanup()
+    def test_zero_token_synthetic_placeholders_hidden_without_losing_usage(self):
+        now=c.time.time()
+        rows=[('placeholder','Claude','parent','<synthetic>',0,0,0,0),
+              ('child-placeholder','Claude','parent/worker','<synthetic>',0,0,0,0),
+              ('real','Claude','parent','real-model',1,2,3,4),
+              ('nonzero-placeholder','Claude','other','<synthetic>',0,0,7,0),
+              ('real-zero','Claude','zero','real-model',0,0,0,0)]
+        for key,source,sid,model,inp,out,cr,cw in rows:
+            c.put(self.db,(key,source,sid,'/fixture',model,now,inp,out,cr,cw))
+        c.relation(self.db,'Claude','parent/worker','parent','running',now)
+        view=c.snapshot(self.db,1,[],[],0)
+        self.assertEqual(len(view['rows']),3)
+        self.assertEqual(sum(r['total'] for r in view['rows']),17)
+        self.assertEqual(view['activeChildren'],[])
+        self.assertFalse(any(r['session']=='parent' and r['model']=='<synthetic>' for r in view['rows']))
+        self.assertTrue(any(r['model']=='<synthetic>' and r['total']==7 for r in view['rows']))
+        self.assertTrue(any(r['session']=='zero' for r in view['rows']))
+        self.assertEqual(self.db.execute('SELECT count(*) FROM events').fetchone()[0],5)
     def test_multiple_enabled_sources_preserve_path_configuration(self):
         claude=self.root/'.claude/projects';claude.mkdir(parents=True)
         codex=self.root/'custom-codex';codex.mkdir()
