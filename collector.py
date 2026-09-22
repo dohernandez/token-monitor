@@ -288,6 +288,9 @@ def snapshot(db,days,notices,sources,pending,config=None):
     for source,sid,project,model,inp,out,cr,cw,latest in db.execute('''SELECT source,session,project,model,sum(inp),sum(out),sum(cr),sum(cw),max(stamp)
          FROM events WHERE stamp>=? GROUP BY source,session,project,model''',(cutoff,)):
         if source not in config.get("usage",["Claude","Codex","OpenCode"]):continue
+        # Claude's local placeholder messages are not model usage. Keep any
+        # unexpected nonzero counters visible rather than discarding spending.
+        if source=='Claude' and model=='<synthetic>' and all(n==0 for n in (inp,out,cr,cw)):continue
         parent=root_for(source,sid)
         agent=names.get(parent) or source+' · '+parent[:8]
         is_child=sid!=parent

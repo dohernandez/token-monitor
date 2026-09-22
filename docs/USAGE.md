@@ -206,3 +206,8 @@ disabled historical totals/alerts, name fallback without handoff, setup confirma
 cancellation, and first Claude report. Automated fixtures cover config round-trip,
 source detection/filtering, parent totals without handoff, and observer installation
 with/without a prior status line. Native picker/setup interaction remains manual.
+
+Claude `<synthetic>` placeholder rows with zero input, output, cache-read and
+cache-write tokens are hidden from usage views and active-child details. Existing
+cache records are preserved. Nonzero synthetic records and real zero-token models
+remain visible; token totals and subscription reports are unchanged.
