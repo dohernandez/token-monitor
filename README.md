@@ -31,19 +31,24 @@ subscription view for provider-reported allowance and reset times.
 - **Separate subscription reports.** Claude and Codex have their own tabs, allowance bars, reset countdowns, and menu bar warnings.
 - **Compaction observations.** A yellow panel labels limited metadata without claiming it measures compaction spending.
 
-Built with SwiftUI, AppKit, and a Python standard-library collector. **Draft 01** is a
-local, ad-hoc signed app; no notarized release, installer, or launch-at-login setup is provided.
+Built with SwiftUI, AppKit, and a Python standard-library collector. **Version 1.0.0** is the first stable version. CI produces drag-to-Applications DMGs
+for macOS 15+, with separate Apple Silicon and Intel downloads. Builds are ad-hoc
+signed; Apple notarization and launch-at-login are not configured.
 
 ## Installation
 
-Requires macOS 15+, Apple Command Line Tools, and `/usr/bin/python3` (Python 3.9+).
-No third-party Python packages, API keys, or model calls are needed.
+Download the DMG for your Mac from [Releases](https://github.com/dohernandez/token-monitor/releases), quit the previous copy, and drag the app into **Applications**. The first downloads appear after the release PR merges and CI finishes. These builds are not Apple-notarized; see the [release and installation guide](docs/RELEASING.md).
+
+### Build from source
+
+Building requires macOS 15+, Apple Command Line Tools, and Python 3.9+. Downloaded apps include their own Python runtime.
+The build downloads a checksum-pinned Python runtime. No third-party Python packages, API keys, or model calls are needed at runtime.
 
 ```sh
 git clone https://github.com/dohernandez/token-monitor.git
 cd token-monitor
 python3 -m unittest -v test_collector.py test_quotas.py
-./build.sh
+sh build.sh
 "build/Token Monitor.app/Contents/MacOS/TokenMonitor" --self-test
 codesign --verify --deep --strict "build/Token Monitor.app"
 open "build/Token Monitor.app" --args --show
@@ -121,6 +126,7 @@ are provided. The [data guide](docs/USAGE.md) records the collection and coverag
 | [Development and recovery](docs/DEVELOPMENT.md) | Build, tests, safe updates, rollback and missing-icon diagnosis |
 | [Acceptance checks](docs/ACCEPTANCE.md) | Accounting regressions and manual UI checks |
 | [Agent instructions](AGENTS.md) | Rules for agents maintaining the project |
+| [Releases and branch rules](docs/RELEASING.md) | Automated versions, installer verification, signing and main protection |
 | [Screenshot sources](docs/screenshots/README.md) | Reproduce these previews without reading agent records |
 
 ## Contributing

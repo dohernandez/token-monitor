@@ -1,6 +1,6 @@
 # Token Monitor maintenance
 
-Read README.md, docs/ARCHITECTURE.md, docs/DEVELOPMENT.md and relevant docs/ACCEPTANCE.md checks before changes; verify current source. This is a standalone prototype;
+Read README.md, docs/ARCHITECTURE.md, docs/DEVELOPMENT.md and relevant docs/ACCEPTANCE.md checks before changes; verify current source. This is a standalone macOS app;
 do not edit Disk Monitor, agent logs, native hooks, or credentials. Global settings
 are unchanged except the explicitly authorized Claude status-line observer documented
 in docs/USAGE.md. Preserve the prior footer and unrelated settings when maintaining it.
@@ -35,3 +35,11 @@ to the Claude observer require forwarding and installer regression tests.
 - Compaction context sizes/duration are not token spending. Keep the yellow limitation label and never add these metrics to usage totals.
 - Retain AppDelegate across app.run; preserve stable autosaveName and user icon placement. isVisible alone does not prove an icon is unobscured.
 - Docs-only work does not require app restarts, builds, scans or observer installation.
+
+## Releases
+
+Read [Release policy](docs/RELEASING.md) for stable versioning, signed commits,
+required CI checks and installer verification. Use `BUILD_DIR` for isolated builds.
+Keep the bundle identity and user preferences stable across upgrades. A ruleset
+file is not proof that GitHub enforces it; verify server-side activation separately.
+Never label ad-hoc app signatures Apple-notarized.

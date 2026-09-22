@@ -93,7 +93,7 @@ final class Store:ObservableObject {
         loading=true;error=nil
         let requestedDays=days
         DispatchQueue.global(qos:.utility).async {
-            let p=Process();p.executableURL=URL(fileURLWithPath:"/usr/bin/python3");p.arguments=[path,"--days",String(requestedDays)]
+            let p=Process();p.executableURL=Bundle.main.resourceURL?.appendingPathComponent("python/bin/python3") ?? URL(fileURLWithPath:"/usr/bin/python3");p.arguments=["-B","-E","-s",path,"--days",String(requestedDays)]
             let stdout=Pipe();p.standardOutput=stdout
             let logURL=FileManager.default.temporaryDirectory.appendingPathComponent("TokenMonitor-"+UUID().uuidString)
             FileManager.default.createFile(atPath:logURL.path,contents:nil)
@@ -385,7 +385,7 @@ struct Dashboard:View {
     var body:some View {
         VStack(spacing:0) {
             VStack(alignment:.leading,spacing:15) {
-                HStack { Label("TOKEN MONITOR",systemImage:"chart.bar.xaxis").font(.system(size:11,weight:.semibold)).tracking(1.4);Spacer();Text("DRAFT 01").font(.system(size:9)).padding(6).background(.white.opacity(0.1),in:Capsule()) }
+                HStack { Label("TOKEN MONITOR",systemImage:"chart.bar.xaxis").font(.system(size:11,weight:.semibold)).tracking(1.4);Spacer();Text("v" + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0")).font(.system(size:9)).padding(6).background(.white.opacity(0.1),in:Capsule()) }
                 if !information && !settings {
                 TimelineView(.periodic(from:.now,by:30)) { context in
                     HStack(spacing:4) {

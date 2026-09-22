@@ -12,14 +12,16 @@ def atomic(path,data,mode=0o600):
     finally:
         if os.path.exists(tmp):os.unlink(tmp)
 
-def install(home,source):
+def install(home,source,python="/usr/bin/python3"):
+    if not Path(python).is_absolute() or not os.access(python,os.X_OK):
+        raise ValueError("Python must be an absolute executable path")
     settings=home/'.claude/settings.json';before=settings.read_bytes();data=json.loads(before)
     old=data.get('statusLine')
     if not isinstance(old,dict) or old.get('type')!='command' or not isinstance(old.get('command'),str):
         raise RuntimeError('Expected an existing command status line; no settings changed')
     state=home/'Library/Application Support/TokenMonitor';state.mkdir(parents=True,exist_ok=True,mode=0o700)
     target=state/'claude-observer';target.mkdir(exist_ok=True,mode=0o700)
-    command='/usr/bin/python3 '+shlex.quote(str(target/'claude_statusline.py'))
+    command=shlex.quote(str(python))+' -B -E -s '+shlex.quote(str(target/'claude_statusline.py'))
     original=state/'statusline-original.json'
     if old['command']==command:
         if not original.exists():raise RuntimeError('Original footer backup missing; no settings changed')
@@ -34,5 +36,5 @@ def install(home,source):
     atomic(settings,(json.dumps(data,indent=2)+'\n').encode(),settings.stat().st_mode & 0o777)
     return command
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--home',type=Path,default=Path.home());a=p.parse_args()
-    print(install(a.home,Path(__file__).resolve().parent))
+    p=argparse.ArgumentParser();p.add_argument('--home',type=Path,default=Path.home());p.add_argument('--python',default='/usr/bin/python3');a=p.parse_args()
+    print(install(a.home,Path(__file__).resolve().parent,a.python))
