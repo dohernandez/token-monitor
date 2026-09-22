@@ -10,6 +10,7 @@ application.setActivationPolicy(.prohibited)
 application.appearance = NSAppearance(named: .darkAqua)
 let preferences = UserDefaults(suiteName: "MonitorReadme." + UUID().uuidString)!
 let store = Store(preferences: preferences)
+store.sourceConfiguration = SourceConfiguration(usage:["Claude","Codex","OpenCode"],subscriptions:["Claude","Codex"],paths:["Claude":"/Users/example/.claude/projects","Codex":"/Users/example/.codex/sessions","OpenCode":"/Users/example/.local/share/opencode/opencode.db"],handoff:false)
 let now = Date().timeIntervalSince1970
 func usage(_ session:String, _ agent:String, _ model:String, _ input:Int64, _ output:Int64, _ read:Int64, _ write:Int64, _ sub:Int64=0)->Usage {
     let total=input+output+read+write

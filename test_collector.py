@@ -12,6 +12,33 @@ class CollectorTests(unittest.TestCase):
         self.db=sqlite3.connect(':memory:');self.db.executescript(c.SCHEMA)
         self.stamp=dt.datetime.now(dt.timezone.utc).isoformat()
     def tearDown(self): self.db.close();self.temp.cleanup()
+    def test_custom_location_and_disabled_sources(self):
+        custom=self.root/'custom sessions';custom.mkdir()
+        (custom/'session.jsonl').write_text(json.dumps(self.record())+'\n')
+        config=dict(enabled=['Claude'],usage=['Claude'],paths={'Claude':str(custom)},handoff=False)
+        notices,sources,pending=c.refresh(self.db,self.root,config=config)
+        self.assertEqual(sources,[dict(name='Claude',available=True)])
+        self.assertEqual(c.snapshot(self.db,1,notices,sources,pending,config=config)['rows'][0]['total'],100)
+        c.refresh(self.db,self.root,config=config)
+        self.assertEqual(self.db.execute('SELECT count(*) FROM events').fetchone()[0],1)
+        hidden=c.snapshot(self.db,1,[],[],0,config=dict(usage=[]))
+        self.assertEqual(hidden['rows'],[])
+        self.assertEqual(self.db.execute('SELECT count(*) FROM events').fetchone()[0],1)
+        self.assertEqual(c.refresh(self.db,self.root,config=dict(enabled=[],handoff=False)),([],[],0))
+    def test_handoff_disabled_keeps_parent_totals(self):
+        c.put(self.db,c.claude(self.record(),{'session':'s'}))
+        c.put(self.db,c.claude(self.record(),{'session':'s','subagent':'worker'}))
+        self.db.execute('INSERT INTO names VALUES (?,?)',('session','custom name'))
+        view=c.snapshot(self.db,1,[],[],0,config=dict(handoff=False))
+        self.assertEqual(view['rows'][0]['agent'],'Claude · session')
+        self.assertEqual(view['rows'][0]['total'],200)
+        self.assertEqual(view['rows'][0]['subagentTotal'],100)
+    def test_cli_disabled_quotas_and_activity(self):
+        import subprocess,sys
+        state=self.root/'state'
+        result=subprocess.run([sys.executable,'collector.py','--home',str(self.root),'--state',str(state),'--config',json.dumps(dict(usage=[],subscriptions=[],handoff=False))],capture_output=True,text=True,check=True)
+        data=json.loads(result.stdout)
+        for key in ['rows','subscriptions','activeSessions','sources']:self.assertEqual(data[key],[])
     def test_active_sessions_distinguish_reused_names_and_dead_processes(self):
         reg=self.root/'.claude/handoff/.registry';reg.parent.mkdir(parents=True)
         reg.write_text('same|repo|main|/p|101|date|old\nsame|repo|main|/p|102|date|new\nwrong|repo|main|/p|103|date|unrelated\n')

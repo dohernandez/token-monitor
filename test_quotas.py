@@ -9,6 +9,19 @@ class QuotaTests(unittest.TestCase):
     def tearDown(self):self.db.close();self.temp.cleanup()
     def event(self,stamp,used=25):
         return dict(payload=dict(type='token_count',rate_limits=dict(limit_id='codex',primary=dict(used_percent=used,window_minutes=10080,resets_at=self.now+3600))),timestamp=stamp)
+    def test_observer_setup_without_existing_statusline(self):
+        import install_claude_observer as installer
+        import subprocess,os
+        home=self.state/'fresh-home';(home/'.claude').mkdir(parents=True)
+        command=installer.install(home,Path(__file__).parent)
+        settings=json.loads((home/'.claude/settings.json').read_text())
+        self.assertEqual(settings['statusLine']['command'],command)
+        self.assertIsNone(json.loads((home/'Library/Application Support/TokenMonitor/statusline-original.json').read_text()))
+        raw=b'{"session_id":"test","rate_limits":{"five_hour":{"used_percentage":12,"resets_at":2000000000}}}'
+        result=subprocess.run(['/bin/sh','-c',command],input=raw,capture_output=True,env=dict(os.environ,HOME=str(home)))
+        self.assertEqual(result.returncode,0);self.assertEqual(result.stdout,b'')
+        installer.install(home,Path(__file__).parent)
+        self.assertTrue(list((home/'Library/Application Support/TokenMonitor/claude-limits').glob('*.json')))
     def test_latest_snapshot_not_summed(self):
         quotas.put_codex(self.db,self.event(self.now,14));quotas.put_codex(self.db,self.event(self.now-100,90));quotas.put_codex(self.db,self.event(self.now,14))
         row=quotas.subscription_snapshot(self.db,self.state,self.now)[0]

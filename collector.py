@@ -163,8 +163,8 @@ def ingest_file(db,path,source,budget):
     db.execute('INSERT OR REPLACE INTO files VALUES (?,?,?,?)',(str(path),stat.st_ino,offset,json.dumps(c)))
     return used,offset<stat.st_size,invalid
 
-def ingest_opencode(db,home):
-    path=home/'.local/share/opencode/opencode.db'
+def ingest_opencode(db,home,path=None):
+    path=path or home/'.local/share/opencode/opencode.db'
     if not path.exists(): return False
     source=sqlite3.connect(path.as_uri()+'?mode=ro',uri=True,timeout=2)
     try:
@@ -231,17 +231,22 @@ def active_sessions(home,processes=None,now=None):
         result.append(dict(source=source,session=sid,name=name))
     return result
 
-def refresh(db,home,budget=64*1024*1024):
+def refresh(db,home,budget=64*1024*1024,config=None):
+    config=config or {}
+    enabled=config.get("enabled",["Claude","Codex","OpenCode"])
+    paths=config.get("paths",{})
     notices=[]; sources=[]; remaining=budget; pending=0
     reg=home/'.claude/handoff/.registry'
-    if reg.exists():
+    if config.get("handoff",True) and reg.exists():
         for line in reg.read_text().splitlines():
             parts=line.split('|')
             if len(parts)==7:
                 sid=parts[6].removeprefix('codex-')
                 db.execute('INSERT OR REPLACE INTO names VALUES (?,?)',(sid,parts[0]))
     for source,base in [('Claude',home/'.claude/projects'),('Codex',home/'.codex/sessions')]:
-        exists=base.exists(); sources.append({'name':source,'available':exists})
+        if source not in enabled: continue
+        base=Path(paths.get(source) or base).expanduser()
+        exists=base.is_dir(); sources.append({'name':source,'available':exists})
         if not exists: notices.append(source+' local records not found');continue
         paths=sorted(base.rglob('*.jsonl'),key=lambda p:p.stat().st_mtime,reverse=True)
         for path in paths:
@@ -255,8 +260,9 @@ def refresh(db,home,budget=64*1024*1024):
                 if invalid:notices.append(source+': skipped '+str(invalid)+' malformed records')
             except (OSError,sqlite3.Error) as e: notices.append(source+': '+str(e))
     try:
-        available=ingest_opencode(db,home);sources.append({'name':'OpenCode','available':available})
-        if not available:notices.append('OpenCode local database not found')
+        available=ingest_opencode(db,home,Path(paths['OpenCode']).expanduser() if paths.get('OpenCode') else None) if 'OpenCode' in enabled else None
+        if available is not None:sources.append({'name':'OpenCode','available':available})
+        if available is False:notices.append('OpenCode local database not found')
     except (sqlite3.Error,ValueError,OSError) as e:
         sources.append({'name':'OpenCode','available':False});notices.append('OpenCode read failed: '+str(e))
     db.execute('DELETE FROM events WHERE stamp<?',(time.time()-32*86400,))
@@ -265,10 +271,11 @@ def refresh(db,home,budget=64*1024*1024):
     if pending:notices.append('Indexing local history · '+str(pending)+' files remaining')
     return notices,sources,pending
 
-def snapshot(db,days,notices,sources,pending):
+def snapshot(db,days,notices,sources,pending,config=None):
+    config=config or {}
     today=dt.datetime.now().replace(hour=0,minute=0,second=0,microsecond=0)
     cutoff=(today-dt.timedelta(days=days-1)).timestamp()
-    names=dict(db.execute('SELECT session,name FROM names'))
+    names=dict(db.execute('SELECT session,name FROM names')) if config.get('handoff',True) else {}
     edges={(source,sid):(parent,state,stamp) for source,sid,parent,state,stamp in db.execute('SELECT * FROM relations')}
     def root_for(source,sid):
         seen=set()
@@ -280,6 +287,7 @@ def snapshot(db,days,notices,sources,pending):
     rows=[]
     for source,sid,project,model,inp,out,cr,cw,latest in db.execute('''SELECT source,session,project,model,sum(inp),sum(out),sum(cr),sum(cw),max(stamp)
          FROM events WHERE stamp>=? GROUP BY source,session,project,model''',(cutoff,)):
+        if source not in config.get("usage",["Claude","Codex","OpenCode"]):continue
         parent=root_for(source,sid)
         agent=names.get(parent) or source+' · '+parent[:8]
         is_child=sid!=parent
@@ -304,7 +312,13 @@ def snapshot(db,days,notices,sources,pending):
     return dict(rows=rows,activeChildren=active_children,notices=notices,sources=sources,indexing=pending>0,updated=time.time())
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--home',type=Path,default=Path.home());p.add_argument('--state',type=Path);p.add_argument('--days',type=int,choices=[1,7,30],default=1);a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--home',type=Path,default=Path.home());p.add_argument('--state',type=Path);p.add_argument('--config',default='{}');p.add_argument('--days',type=int,choices=[1,7,30],default=1);a=p.parse_args()
+    config=json.loads(a.config)
+    allowed={'Claude','Codex','OpenCode'}
+    if not isinstance(config,dict):raise ValueError('Configuration must be an object')
+    for key in ['usage','subscriptions']:
+        if key in config and (not isinstance(config[key],list) or not all(x in allowed for x in config[key])):raise ValueError('Invalid enabled sources')
+    config['enabled']=list(set(config.get('usage',allowed)) | set(config.get('subscriptions',[])))
     os.umask(0o077)  # This dedicated collector process writes only private state.
     state=secure_state(a.state or a.home/'Library/Application Support/TokenMonitor')
     with (state/'collector.lock').open('w') as lock:
@@ -324,11 +338,11 @@ def main():
             db.execute("UPDATE files SET offset=0,context='{}' WHERE path LIKE '%.jsonl'")
             db.execute("INSERT INTO metadata VALUES ('compaction-backfill-v1','1')")
             db.commit()
-        notices,sources,pending=refresh(db,a.home)
-        result=snapshot(db,a.days,notices,sources,pending)
-        result["subscriptions"]=subscription_snapshot(db,state)
-        result["activeSessions"]=active_sessions(a.home)
-        result["compactions"]=compaction_snapshot(db,a.days)
+        notices,sources,pending=refresh(db,a.home,config=config)
+        result=snapshot(db,a.days,notices,sources,pending,config=config)
+        result["subscriptions"]=[q for q in subscription_snapshot(db,state) if q["source"] in config.get("subscriptions",["Claude","Codex"])]
+        result["activeSessions"]=[row for row in active_sessions(a.home) if row["source"] in config.get("usage",allowed)] if config.get("handoff",True) else []
+        result["compactions"]=[row for row in compaction_snapshot(db,a.days) if row["source"] in config.get("usage",allowed)]
         print(json.dumps(result))
         db.close()
 if __name__=='__main__':main()

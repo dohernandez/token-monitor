@@ -67,7 +67,7 @@ The app does not start a handoff listener or change agent instructions.
 - No cost estimates, configurable budgets, charts, exports, or login startup yet. Subscription quota bars are provider-reported snapshots, separate from budgets.
 - Project grouping uses recorded working directories, so worktrees remain separate.
 - Deleted/missing source logs cannot be reconstructed. Nonstandard client log locations
-  are not auto-discovered. Missing/old sources may omit activity.
+  can be selected in Settings → Sources & subscriptions. Missing/old sources may omit activity.
 - There is no database migration framework; schema v1 uses its own filename.
 - Persistent malformed-record history and full model-alias resolution remain follow-ups.
 - Tests cover adapters and accounting boundaries, not automated AppKit visual behavior.
@@ -109,7 +109,7 @@ preservation, unrelated settings, and idempotent reinstall.
 Claude's bars stay unavailable until a session emits quota data. If a session keeps
 using old status-line settings, it may need a settings reload or a later restart;
 the monitor does not restart agents. To uninstall the observer, replace only the
-`statusLine` object with the saved `statusline-original.json` object, preserving all
+`statusLine` object with the saved `statusline-original.json` object (remove the statusLine key if the saved value is null), preserving all
 other current settings. Do not restore the entire old settings file over later edits.
 Keep the observer files until no running session refers to them.
 
@@ -175,3 +175,34 @@ The alert legend lives in Settings, matching Disk Monitor, and explains menu bad
 ## Compaction observations
 
 Expanded Agent cards include a yellow Compactions / Limited data panel for the exact parent session and selected period. Claude compact_boundary events supply count, optional duration and last pre/post context size. Codex compacted events supply count only: embedded usage is not assumed to be compaction cost. No compaction metrics are added to token totals. Missing records are not proof of no compaction; OpenCode is not supported. Subagent events remain separate and are not included in the parent panel. Numeric metadata only is stored in the private compactions table; no summary text is retained. A one-time bounded JSONL replay backfills metadata using existing event deduplication, with the normal 32-day retention. Duration totals state how many events reported duration. Token spending is visibly marked not verified.
+
+## Sources and subscriptions setup
+
+Settings → Sources & subscriptions detects local clients on first use. Enable usage
+for Claude, Codex or OpenCode, choose custom session directories (or an OpenCode
+SQLite file), and enable Claude/Codex subscription reports independently. Choices
+save immediately in sourceConfiguration UserDefaults. Disabled sources leave the
+visible totals and badges; cached history remains under normal retention. Changing
+a location does not erase previously collected provider history. These controls
+configure local reports, not provider login, billing plans or account identities.
+
+Claude setup explicitly confirms before wrapping ~/.claude/settings.json. Existing
+command status lines and unrelated settings are preserved; no existing status line
+is also supported, recorded as null in the backup. No live observer is installed
+by builds/tests. Setup needed, Waiting for report and Connected (fresh local report)
+are distinct states; Connected is not proof of authentication or complete coverage.
+Custom Claude usage folders do not relocate observer settings. The observer uses
+the app's bundled Python; keep the app at the same location after setup. Disabling
+reports hides them but does not uninstall an existing observer.
+
+Handoff is optional and read-only. Turning it off suppresses cached handoff names
+and Active evidence, without changing parent/subagent accounting. No registry,
+agent instructions, credentials or source logs are edited. Multiple accounts still
+cannot be distinguished; reports and token totals are explicitly not account-specific.
+OpenCode subscription quotas are unsupported. Older versions ignore source settings.
+
+Acceptance: verify empty-Mac setup, one enabled provider, custom source location,
+disabled historical totals/alerts, name fallback without handoff, setup confirmation
+cancellation, and first Claude report. Automated fixtures cover config round-trip,
+source detection/filtering, parent totals without handoff, and observer installation
+with/without a prior status line. Native picker/setup interaction remains manual.

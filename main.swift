@@ -59,6 +59,18 @@ struct Group:Identifiable {
     let id:String;let title:String;let subtitle:String;let rows:[Usage];let active:Bool
     var total:Int64 { rows.reduce(0){$0+$1.total} }
 }
+struct SourceConfiguration: Codable, Equatable {
+    var usage: [String]
+    var subscriptions: [String]
+    var paths: [String:String] = [:]
+    var handoff: Bool
+    static func defaults(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> SourceConfiguration {
+        let paths = ["Claude":".claude/projects", "Codex":".codex/sessions", "OpenCode":".local/share/opencode/opencode.db"]
+        let detected = ["Claude","Codex","OpenCode"].filter { FileManager.default.fileExists(atPath: home.appendingPathComponent(paths[$0]!).path) }
+        return SourceConfiguration(usage: detected, subscriptions: detected.filter { $0 != "OpenCode" }, handoff: FileManager.default.fileExists(atPath: home.appendingPathComponent(".claude/handoff/.registry").path))
+    }
+    var json: String { String(data: try! JSONEncoder().encode(self), encoding: .utf8)! }
+}
 final class Store:ObservableObject {
     @Published var data:Snapshot?
     @Published var loading=false
@@ -66,16 +78,64 @@ final class Store:ObservableObject {
     @Published var days=1
     @Published var tab="Agents"
     @Published var expanded:Set<String>=[]
+    @Published var sourceConfiguration: SourceConfiguration
+    @Published var setupMessage: String?
+    @Published var installingObserver = false
     let preferences:UserDefaults
     @Published private(set) var refreshSeconds:Int
     init(preferences:UserDefaults = .standard) {
         self.preferences=preferences
+        sourceConfiguration = preferences.data(forKey:"sourceConfiguration").flatMap { try? JSONDecoder().decode(SourceConfiguration.self,from:$0) } ?? SourceConfiguration.defaults()
         let saved=preferences.integer(forKey:"refreshSeconds")
         refreshSeconds=(5...3600).contains(saved) ? saved : 30
     }
     @discardableResult func configureRefresh(_ seconds:Int)->Bool {
         guard (5...3600).contains(seconds) else{return false}
         refreshSeconds=seconds;preferences.set(seconds,forKey:"refreshSeconds");scheduleTimer();return true
+    }
+    func saveSources() {
+        preferences.set(try? JSONEncoder().encode(sourceConfiguration),forKey:"sourceConfiguration")
+        data=nil;onUpdate?();refresh()
+    }
+    func sourcePath(_ source: String) -> String {
+        sourceConfiguration.paths[source] ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(["Claude":".claude/projects","Codex":".codex/sessions","OpenCode":".local/share/opencode/opencode.db"][source]!).path
+    }
+    func chooseSource(_ source: String) {
+        let panel=NSOpenPanel();panel.canChooseDirectories=source != "OpenCode";panel.canChooseFiles=source == "OpenCode"
+        panel.prompt=source == "OpenCode" ? "Choose database" : "Choose session folder"
+        if panel.runModal() == .OK, let url=panel.url {sourceConfiguration.paths[source]=url.path;saveSources()}
+    }
+    var observerInstalled: Bool {
+        let home=FileManager.default.homeDirectoryForCurrentUser
+        guard let bytes=try? Data(contentsOf:home.appendingPathComponent(".claude/settings.json")),
+              let settings=try? JSONSerialization.jsonObject(with:bytes) as? [String:Any],
+              let line=settings["statusLine"] as? [String:Any], let command=line["command"] as? String else{return false}
+        return command.contains("TokenMonitor/claude-observer/claude_statusline.py")
+    }
+    func subscriptionStatus(_ source: String) -> String {
+        if source == "Claude" && !observerInstalled {return "Setup needed"}
+        let reports=(data?.subscriptions ?? []).filter {$0.source == source && $0.used != nil}
+        if reports.contains(where: {($0.resetsAt ?? 0) > Date().timeIntervalSince1970 && Date().timeIntervalSince1970 - ($0.observed ?? 0) <= 300}) {return "Connected · local report available"}
+        return "Waiting for report"
+    }
+    func installObserver() {
+        let alert=NSAlert();alert.messageText="Set up Claude subscription reports?"
+        alert.informativeText="This adds a quota observer to ~/.claude/settings.json. Your existing status line and other settings are preserved and backed up. It does not sign in or read credentials. Existing Claude sessions may need a restart."
+        alert.addButton(withTitle:"Set up");alert.addButton(withTitle:"Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else{return}
+        guard let resources=Bundle.main.resourceURL else{return}
+        installingObserver=true;setupMessage=nil
+        DispatchQueue.global(qos:.utility).async {
+            let process=Process();let pipe=Pipe()
+            let python=resources.appendingPathComponent("python/bin/python3").path
+            process.executableURL=URL(fileURLWithPath:python)
+            process.arguments=["-B","-E","-s",resources.appendingPathComponent("install_claude_observer.py").path,"--python",python]
+            process.standardOutput=FileHandle.nullDevice;process.standardError=pipe
+            var message="Observer installed. Waiting for Claude to publish a report."
+            do {try process.run();let detail=pipe.fileHandleForReading.readDataToEndOfFile();process.waitUntilExit();if process.terminationStatus != 0 {message="Setup failed: " + String(decoding:detail.suffix(700),as:UTF8.self)}} catch {message="Setup failed: " + error.localizedDescription}
+            let result=message
+            DispatchQueue.main.async {self.installingObserver=false;self.setupMessage=result;self.refresh()}
+        }
     }
     func scheduleTimer() {
         timer?.invalidate()
@@ -92,8 +152,9 @@ final class Store:ObservableObject {
         guard let path=Bundle.main.path(forResource:"collector",ofType:"py") else{error="Collector is missing from the app bundle.";return}
         loading=true;error=nil
         let requestedDays=days
+        let requestedSources=sourceConfiguration
         DispatchQueue.global(qos:.utility).async {
-            let p=Process();p.executableURL=Bundle.main.resourceURL?.appendingPathComponent("python/bin/python3") ?? URL(fileURLWithPath:"/usr/bin/python3");p.arguments=["-B","-E","-s",path,"--days",String(requestedDays)]
+            let p=Process();p.executableURL=Bundle.main.resourceURL?.appendingPathComponent("python/bin/python3") ?? URL(fileURLWithPath:"/usr/bin/python3");p.arguments=["-B","-E","-s",path,"--days",String(requestedDays),"--config",requestedSources.json]
             let stdout=Pipe();p.standardOutput=stdout
             let logURL=FileManager.default.temporaryDirectory.appendingPathComponent("TokenMonitor-"+UUID().uuidString)
             FileManager.default.createFile(atPath:logURL.path,contents:nil,attributes:[.posixPermissions:0o600])
@@ -110,7 +171,7 @@ final class Store:ObservableObject {
             let output=result;let problem=failure
             DispatchQueue.main.async {
                 self.process=nil;self.loading=false
-                if requestedDays != self.days { self.refresh();return }
+                if requestedDays != self.days || requestedSources != self.sourceConfiguration { self.refresh();return }
                 if let output=output { self.data=output }
                 self.error=problem;self.onUpdate?()
                 if output?.indexing==true { DispatchQueue.main.asyncAfter(deadline:.now()+2){self.refresh()} }
@@ -348,6 +409,47 @@ struct AlertLegend:View {
         }.font(.system(size:11))
     }
 }
+struct SourceSettings: View {
+    @ObservedObject var store: Store
+    func binding(_ source:String, subscriptions:Bool=false) -> Binding<Bool> {
+        Binding(get:{ (subscriptions ? store.sourceConfiguration.subscriptions : store.sourceConfiguration.usage).contains(source) },set:{ enabled in
+            if subscriptions {store.sourceConfiguration.subscriptions.removeAll {$0 == source};if enabled {store.sourceConfiguration.subscriptions.append(source)}}
+            else {store.sourceConfiguration.usage.removeAll {$0 == source};if enabled {store.sourceConfiguration.usage.append(source)}}
+            store.saveSources()
+        })
+    }
+    var body: some View {
+        VStack(alignment:.leading,spacing:12) {
+            Text("Sources & subscriptions").font(.headline)
+            Text("Changes save immediately. Disabled sources retain their history but leave totals and alerts.").font(.caption).foregroundStyle(.secondary)
+            ForEach(["Claude","Codex","OpenCode"],id:\.self) {source in
+                Toggle(source + " usage",isOn:binding(source))
+                Text(store.sourcePath(source)).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                HStack {
+                    Text(FileManager.default.fileExists(atPath:store.sourcePath(source)) ? "Detected" : "Not found").font(.caption)
+                    Spacer()
+                    Button("Choose location…") {store.chooseSource(source)}
+                    Button("Default") {store.sourceConfiguration.paths.removeValue(forKey:source);store.saveSources()}
+                }
+            }
+            Divider()
+            Text("Subscription reports").fontWeight(.semibold)
+            ForEach(["Claude","Codex"],id:\.self) {source in
+                Toggle(source,isOn:binding(source,subscriptions:true))
+                if store.sourceConfiguration.subscriptions.contains(source) {Text(store.subscriptionStatus(source)).font(.caption).foregroundStyle(.secondary)}
+            }
+            if store.sourceConfiguration.subscriptions.contains("Claude") {
+                Button(store.installingObserver ? "Setting up…" : "Set up Claude reports…") {store.installObserver()}.disabled(store.installingObserver)
+                Text("Uses the standard ~/.claude/settings.json. Custom session folders change usage imports only.").font(.caption).foregroundStyle(.secondary)
+            }
+            if let message=store.setupMessage {Text(message).font(.caption).textSelection(.enabled)}
+            Text("Codex reports arrive from its selected session folder. OpenCode subscription quotas are not supported. No login or credentials are collected. Multiple accounts cannot be distinguished: reports and local totals must not be treated as account-specific.").font(.caption).foregroundStyle(Color.yellow)
+            Divider()
+            Toggle("Handoff agent names & activity",isOn:Binding(get:{store.sourceConfiguration.handoff},set:{store.sourceConfiguration.handoff=$0;store.saveSources()}))
+            Text("Optional, read-only integration. Without it, sessions use their client and short ID with Unverified status. Parent/subagent usage still works.").font(.caption).foregroundStyle(.secondary)
+        }.font(.system(size:11)).disabled(store.loading || store.installingObserver)
+    }
+}
 struct TokenSettings:View {
     @ObservedObject var store:Store
     let close:()->Void
@@ -371,6 +473,8 @@ struct TokenSettings:View {
                 }.buttonStyle(.borderedProminent).tint(accent).foregroundStyle(.black)
                 Text("Saved across restarts. An active collection continues; the new interval applies to the next scheduled refresh. Initial history indexing continues in short batches.").font(.system(size:11)).foregroundStyle(.secondary)
                 Divider().padding(.vertical,3)
+                SourceSettings(store:store)
+                Divider()
                 UpdateSettings()
                 Divider()
                 AlertLegend()
@@ -422,14 +526,19 @@ struct Dashboard:View {
                 }
             } else if page=="Subscriptions" {
                 Picker("Provider",selection:$subscriptionProvider) {
-                    Text("Claude").tag("Claude")
-                    Text("Codex").tag("Codex")
+                    ForEach(store.sourceConfiguration.subscriptions,id:\.self) {Text($0).tag($0)}
                 }.pickerStyle(.segmented).labelsHidden().padding(14)
                 ScrollView {
                     VStack(alignment:.leading,spacing:12) {
                         if let error=store.error { notice("Refresh failed · previous reports retained\n"+error) }
                         if store.data == nil {
                             Text("Loading subscription reports…").font(.caption).foregroundStyle(.secondary).padding(.vertical,20)
+                        }
+                        if store.sourceConfiguration.subscriptions.isEmpty {
+                            Text("No subscription providers enabled. Add Claude or Codex in Settings → Sources & subscriptions.").font(.caption)
+                            Button("Set up subscriptions") {settings=true}
+                        } else {
+                            Text(store.subscriptionStatus(subscriptionProvider)).font(.caption).foregroundStyle(.secondary)
                         }
                         SubscriptionPanel(subscriptions:(store.data?.subscriptions ?? []).filter { $0.source==subscriptionProvider })
 
@@ -442,7 +551,7 @@ struct Dashboard:View {
                         if let error=store.error { notice("Refresh failed · saved view retained\n"+error) }
                         ForEach(store.data?.notices ?? [],id:\.self){notice($0)}
                         if store.groups.isEmpty {
-                            VStack(spacing:12){Image(systemName:store.loading ? "hourglass":"chart.bar").font(.system(size:26));Text(store.loading ? "Reading local usage…":"No recorded usage in this period");Text("Try 7 or 30 days. Missing records are not proof of zero usage.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)}.frame(maxWidth:.infinity).padding(.vertical,35)
+                            VStack(spacing:12){Image(systemName:store.loading ? "hourglass":"chart.bar").font(.system(size:26));Text(store.loading ? "Reading local usage…":"No recorded usage in this period");Text(store.sourceConfiguration.usage.isEmpty ? "Enable a client in Settings → Sources & subscriptions to get started." : "Try 7 or 30 days. Missing records are not proof of zero usage.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)}.frame(maxWidth:.infinity).padding(.vertical,35)
                         }
                         ForEach(store.groups){GroupRow(store:store,group:$0)}
                     }.padding(.horizontal,14).padding(.bottom,14)
@@ -469,6 +578,10 @@ struct Dashboard:View {
                 Button{NSApp.terminate(nil)}label:{Image(systemName:"power").frame(width:22,height:28)}.help("Quit Token Monitor").accessibilityLabel("Quit Token Monitor")
             }.buttonStyle(.plain).padding(14)
         }.frame(width:460,height:700).background(canvasColor).foregroundStyle(Color(white:0.88)).preferredColorScheme(.dark)
+        .onChange(of:store.sourceConfiguration.subscriptions) { _, providers in
+            if !providers.contains(subscriptionProvider) {subscriptionProvider=providers.first ?? "Claude"}
+        }
+        .onAppear {if !store.sourceConfiguration.subscriptions.contains(subscriptionProvider) {subscriptionProvider=store.sourceConfiguration.subscriptions.first ?? "Claude"}}
         .onChange(of:store.days){_,_ in store.expanded=[];store.refresh()}
         .onChange(of:store.tab){_,_ in store.expanded=[]}
     }
@@ -598,6 +711,13 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(subscriptionWarningLevel([q(101),q(.nan),q(90,2000,1100)],now:1000)==0)
     precondition(subscriptionWarningLevel([],now:1000)==0)
     print("PASS: subscription badge thresholds, provider priority, stale retention, expiry and unknown data")
+    let fixtureHome=FileManager.default.temporaryDirectory.appendingPathComponent("TokenSources-"+UUID().uuidString)
+    try FileManager.default.createDirectory(at:fixtureHome,withIntermediateDirectories:true)
+    precondition(SourceConfiguration.defaults(home:fixtureHome).usage.isEmpty)
+    try FileManager.default.createDirectory(at:fixtureHome.appendingPathComponent(".codex/sessions"),withIntermediateDirectories:true)
+    let detected=SourceConfiguration.defaults(home:fixtureHome)
+    precondition(detected.usage == ["Codex"] && detected.subscriptions == ["Codex"] && !detected.handoff)
+    try FileManager.default.removeItem(at:fixtureHome)
     let suite="TokenMonitor-settings-test-"+UUID().uuidString
     let prefs=UserDefaults(suiteName:suite)!
     let store=Store(preferences:prefs)
@@ -607,7 +727,9 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(store.timer!.timeInterval==60)
     precondition(!store.configureRefresh(4) && !store.configureRefresh(3601))
     precondition(store.refreshSeconds==60)
-    let restored=Store(preferences:prefs);precondition(restored.refreshSeconds==60)
+    let custom=SourceConfiguration(usage:["Claude"],subscriptions:[],paths:["Claude":"/fixture/custom"],handoff:false)
+    prefs.set(try JSONEncoder().encode(custom),forKey:"sourceConfiguration")
+    let restored=Store(preferences:prefs);precondition(restored.refreshSeconds==60 && restored.sourceConfiguration == custom)
     store.timer?.invalidate();prefs.removePersistentDomain(forName:suite)
     print("PASS: refresh settings validation, timer replacement and persistence")
 } else {
