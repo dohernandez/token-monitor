@@ -8,30 +8,16 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
+
+from secure_archive import extract_archive, safe_members as _safe_members
 
 def safe_members(archive):
-    members = archive.getmembers()
-    for member in members:
-        path = PurePosixPath(member.name)
-        if path.is_absolute() or '..' in path.parts or not path.parts or path.parts[0] != 'python':
-            raise ValueError('Unsafe archive path: ' + member.name)
-        if not (member.isfile() or member.isdir() or member.issym() or member.islnk()):
-            raise ValueError('Unexpected archive member: ' + member.name)
-        if member.issym() or member.islnk():
-            link = PurePosixPath(member.linkname)
-            target = (path.parent / link) if member.issym() else link
-            depth = 0
-            if link.is_absolute():
-                raise ValueError('Absolute archive link')
-            for part in target.parts:
-                depth += -1 if part == '..' else 0 if part == '.' else 1
-                if depth < 1:
-                    raise ValueError('Escaping archive link')
-            if target.parts[0] != 'python':
-                raise ValueError('Archive link outside Python')
-    return members
+    return _safe_members(archive, 'python')
+
+def extract_runtime(archive, directory):
+    extract_archive(archive, directory, 'python')
 
 
 def bundle(resources, cache):
@@ -55,9 +41,7 @@ def bundle(resources, cache):
         raise ValueError('Cached Python archive checksum mismatch; remove it and retry')
     with tempfile.TemporaryDirectory(dir=resources, prefix='.python-') as directory:
         with tarfile.open(archive) as file:
-            members = safe_members(file)
-            # The pinned archive was validated above, including link destinations.
-            file.extractall(directory, members=members, **({'filter': 'fully_trusted'} if sys.version_info >= (3, 12) else {}))
+            extract_runtime(file, directory)
         runtime = Path(directory) / 'python'
         subprocess.run([str(runtime / 'bin/python3'), '-I', '-B', '-c', 'import sqlite3, ssl, json, fcntl; assert sqlite3.connect(":memory:")'], check=True)
         if not list(runtime.glob('**/LICENSE*')):

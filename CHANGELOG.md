@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add signed Sparkle updates, manual checking and optional automatic updates.
+- Enforce owner-only cache permissions while preserving saved data.
+- Reject unsafe archive links and duplicate entries when bundling Python.
+
 ## 1.0.0
 
 First stable release of Token Monitor.

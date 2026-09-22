@@ -5,7 +5,7 @@
 Run from the project root, preserving the full build log:
 
 ```sh
-python3 -m unittest -v test_collector.py test_quotas.py
+python3 -m unittest -v test_collector.py test_quotas.py test_privacy.py
 sh build.sh > build.log 2>&1
 "build/Token Monitor.app/Contents/MacOS/TokenMonitor" --self-test
 codesign --verify --deep --strict "build/Token Monitor.app"

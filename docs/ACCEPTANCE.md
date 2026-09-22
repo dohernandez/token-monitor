@@ -42,3 +42,14 @@ account billing reconciliation, complete cross-provider model alias mapping, or
 verified OpenCode parent liveness/compaction reporting. Source schemas may evolve.
 Do not request Computer Use permissions just for screenshots. Never change live
 provider logs to manufacture a fixture.
+
+## Updates and privacy
+
+- Run `SPARKLE_TOOLS=<build-dir>/sparkle python3 -B scripts/test_signatures.py`.
+  Valid signed fixtures pass; changed installers, unsigned/changed feeds and wrong
+  keys must fail. PR CI repeats this with temporary keys on both architectures.
+- Verify cache migration preserves data, sets owner-only modes and rejects links.
+- Manually check Settings update controls, automatic preferences across restart,
+  update UI from a menu-bar app, and upgrade/relaunch while a measurement is active.
+  Signature unit tests do not establish these interactive behaviors.
+- The installed v1.0.0 app needs a manual upgrade before it can use in-app updates.
