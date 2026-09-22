@@ -12,6 +12,23 @@ class CollectorTests(unittest.TestCase):
         self.db=sqlite3.connect(':memory:');self.db.executescript(c.SCHEMA)
         self.stamp=dt.datetime.now(dt.timezone.utc).isoformat()
     def tearDown(self): self.db.close();self.temp.cleanup()
+    def test_multiple_enabled_sources_preserve_path_configuration(self):
+        claude=self.root/'.claude/projects';claude.mkdir(parents=True)
+        codex=self.root/'custom-codex';codex.mkdir()
+        (claude/'session.jsonl').write_text(json.dumps(self.record())+'\n')
+        (codex/'session.jsonl').write_text('{}\n')
+        config=dict(enabled=['Claude','Codex','OpenCode'],paths={'Codex':str(codex),'OpenCode':str(self.root/'absent.db')},handoff=False)
+        notices,sources,_=c.refresh(self.db,self.root,config=config)
+        self.assertEqual(sources,[dict(name='Claude',available=True),dict(name='Codex',available=True),dict(name='OpenCode',available=False)])
+        import subprocess,sys
+        result=subprocess.run([sys.executable,'collector.py','--home',str(self.root),'--state',str(self.root/'cli-state'),'--config',json.dumps(dict(config,usage=['Claude','Codex','OpenCode'],subscriptions=['Claude','Codex']))],capture_output=True,text=True,check=True)
+        report=json.loads(result.stdout)
+        self.assertEqual(report['rows'][0]['total'],100)
+        self.assertEqual(len(report['sources']),3)
+        self.assertEqual(config['paths']['Codex'],str(codex))
+        self.assertEqual(self.db.execute('SELECT count(*) FROM events').fetchone()[0],1)
+        c.refresh(self.db,self.root,config=config)
+        self.assertEqual(self.db.execute('SELECT count(*) FROM events').fetchone()[0],1)
     def test_custom_location_and_disabled_sources(self):
         custom=self.root/'custom sessions';custom.mkdir()
         (custom/'session.jsonl').write_text(json.dumps(self.record())+'\n')

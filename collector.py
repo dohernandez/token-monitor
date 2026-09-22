@@ -234,7 +234,7 @@ def active_sessions(home,processes=None,now=None):
 def refresh(db,home,budget=64*1024*1024,config=None):
     config=config or {}
     enabled=config.get("enabled",["Claude","Codex","OpenCode"])
-    paths=config.get("paths",{})
+    source_paths=config.get("paths",{})
     notices=[]; sources=[]; remaining=budget; pending=0
     reg=home/'.claude/handoff/.registry'
     if config.get("handoff",True) and reg.exists():
@@ -245,7 +245,7 @@ def refresh(db,home,budget=64*1024*1024,config=None):
                 db.execute('INSERT OR REPLACE INTO names VALUES (?,?)',(sid,parts[0]))
     for source,base in [('Claude',home/'.claude/projects'),('Codex',home/'.codex/sessions')]:
         if source not in enabled: continue
-        base=Path(paths.get(source) or base).expanduser()
+        base=Path(source_paths.get(source) or base).expanduser()
         exists=base.is_dir(); sources.append({'name':source,'available':exists})
         if not exists: notices.append(source+' local records not found');continue
         paths=sorted(base.rglob('*.jsonl'),key=lambda p:p.stat().st_mtime,reverse=True)
@@ -260,7 +260,7 @@ def refresh(db,home,budget=64*1024*1024,config=None):
                 if invalid:notices.append(source+': skipped '+str(invalid)+' malformed records')
             except (OSError,sqlite3.Error) as e: notices.append(source+': '+str(e))
     try:
-        available=ingest_opencode(db,home,Path(paths['OpenCode']).expanduser() if paths.get('OpenCode') else None) if 'OpenCode' in enabled else None
+        available=ingest_opencode(db,home,Path(source_paths['OpenCode']).expanduser() if source_paths.get('OpenCode') else None) if 'OpenCode' in enabled else None
         if available is not None:sources.append({'name':'OpenCode','available':available})
         if available is False:notices.append('OpenCode local database not found')
     except (sqlite3.Error,ValueError,OSError) as e:
