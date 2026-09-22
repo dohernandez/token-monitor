@@ -2,6 +2,7 @@
 """Install the explicitly authorized quota observer, preserving the prior footer."""
 import argparse,json,os,shlex,shutil,tempfile,time
 from pathlib import Path
+from private_state import secure_state, secure_directory
 
 def atomic(path,data,mode=0o600):
     fd,tmp=tempfile.mkstemp(prefix='.install-',dir=path.parent)
@@ -19,8 +20,8 @@ def install(home,source,python="/usr/bin/python3"):
     old=data.get('statusLine')
     if not isinstance(old,dict) or old.get('type')!='command' or not isinstance(old.get('command'),str):
         raise RuntimeError('Expected an existing command status line; no settings changed')
-    state=home/'Library/Application Support/TokenMonitor';state.mkdir(parents=True,exist_ok=True,mode=0o700)
-    target=state/'claude-observer';target.mkdir(exist_ok=True,mode=0o700)
+    state=secure_state(home/'Library/Application Support/TokenMonitor')
+    target=secure_directory(state/'claude-observer')
     command=shlex.quote(str(python))+' -B -E -s '+shlex.quote(str(target/'claude_statusline.py'))
     original=state/'statusline-original.json'
     if old['command']==command:
@@ -29,7 +30,7 @@ def install(home,source,python="/usr/bin/python3"):
         if original.exists():raise RuntimeError('Previous observer configuration exists; inspect before replacing it')
         atomic(original,json.dumps(old).encode())
         atomic(state/('claude-settings-before-observer-'+str(time.time_ns())+'.json'),before)
-    for name in ['claude_statusline.py','quotas.py']:
+    for name in ['claude_statusline.py','quotas.py','private_state.py']:
         atomic(target/name,(source/name).read_bytes())
     replacement=dict(old);replacement['command']=command;data['statusLine']=replacement
     if settings.read_bytes()!=before:raise RuntimeError('Settings changed concurrently; not overwritten')

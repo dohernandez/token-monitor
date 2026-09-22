@@ -96,7 +96,7 @@ final class Store:ObservableObject {
             let p=Process();p.executableURL=Bundle.main.resourceURL?.appendingPathComponent("python/bin/python3") ?? URL(fileURLWithPath:"/usr/bin/python3");p.arguments=["-B","-E","-s",path,"--days",String(requestedDays)]
             let stdout=Pipe();p.standardOutput=stdout
             let logURL=FileManager.default.temporaryDirectory.appendingPathComponent("TokenMonitor-"+UUID().uuidString)
-            FileManager.default.createFile(atPath:logURL.path,contents:nil)
+            FileManager.default.createFile(atPath:logURL.path,contents:nil,attributes:[.posixPermissions:0o600])
             let err=try? FileHandle(forWritingTo:logURL);p.standardError=err ?? FileHandle.nullDevice
             var result:Snapshot?;var failure:String?
             do {
@@ -371,6 +371,8 @@ struct TokenSettings:View {
                 }.buttonStyle(.borderedProminent).tint(accent).foregroundStyle(.black)
                 Text("Saved across restarts. An active collection continues; the new interval applies to the next scheduled refresh. Initial history indexing continues in short batches.").font(.system(size:11)).foregroundStyle(.secondary)
                 Divider().padding(.vertical,3)
+                UpdateSettings()
+                Divider()
                 AlertLegend()
             }.padding(20)
         }.onAppear {seconds=String(store.refreshSeconds)}
@@ -505,6 +507,7 @@ final class AppDelegate:NSObject,NSApplicationDelegate,NSPopoverDelegate {
     let badge=StatusBadgeView(frame:.zero)
     var badgeTimer:Timer?
     func applicationDidFinishLaunching(_ n:Notification) {
+        AppUpdates.shared.start { [weak self] in self?.store.loading == true }
         launchDiagnostic("didFinish")
         DispatchQueue.main.asyncAfter(deadline:.now()+2) { launchDiagnostic("status",self.item) }
         NSApp.setActivationPolicy(.accessory)
@@ -567,6 +570,15 @@ final class AppDelegate:NSObject,NSApplicationDelegate,NSPopoverDelegate {
     func popoverDidClose(_ n:Notification){clearMonitors()}
     func applicationDidResignActive(_ n:Notification){popover.performClose(nil)}
     func applicationWillTerminate(_ n:Notification){clearMonitors();badgeTimer?.invalidate();store.timer?.invalidate();if store.process?.isRunning==true{store.process?.terminate()}}
+}
+if CommandLine.arguments.contains("--updater-self-test") {
+    precondition(Bundle.main.bundleIdentifier?.hasPrefix("local.monitor.updater-test.") == true, "Use the isolated updater fixture")
+    _ = NSApplication.shared
+    AppUpdates.shared.start { false }
+    precondition(AppUpdates.shared.failure == nil, "Sparkle configuration must start successfully")
+    precondition(!AppUpdates.shared.checks && !AppUpdates.shared.downloads)
+    print("PASS: embedded Sparkle starts with automatic checks and downloads disabled")
+    exit(0)
 }
 if CommandLine.arguments.contains("--self-test") {
     precondition(compact(12_670_320_000)=="12.67B")

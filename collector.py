@@ -3,6 +3,7 @@
 import subprocess
 import argparse, datetime as dt, fcntl, hashlib, json, os, re, sqlite3, time
 from pathlib import Path
+from private_state import secure_state
 from quotas import put_codex, subscription_snapshot
 
 SCHEMA = '''
@@ -304,7 +305,8 @@ def snapshot(db,days,notices,sources,pending):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--home',type=Path,default=Path.home());p.add_argument('--state',type=Path);p.add_argument('--days',type=int,choices=[1,7,30],default=1);a=p.parse_args()
-    state=a.state or a.home/'Library/Application Support/TokenMonitor';state.mkdir(parents=True,exist_ok=True)
+    os.umask(0o077)  # This dedicated collector process writes only private state.
+    state=secure_state(a.state or a.home/'Library/Application Support/TokenMonitor')
     with (state/'collector.lock').open('w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
         db=sqlite3.connect(state/'usage-v1.sqlite');db.executescript(SCHEMA)

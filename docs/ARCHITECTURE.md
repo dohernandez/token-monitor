@@ -82,5 +82,27 @@ The collector uses `Contents/Resources/python/bin/python3` with `-B -E -s`, igno
 Python environment variables and user site packages while retaining its bundled
 sibling modules. The runtime is downloaded only at build time from the exact
 release and SHA-256 in `scripts/python-runtime.json`; its license files are retained.
-App runtime makes no new network requests. Bundle IDs and user data locations stay unchanged.
+Only opt-in/manual Sparkle update checks make network requests. Bundle IDs and user data locations stay unchanged.
 See [Releasing](RELEASING.md) for CI and optional observer setup.
+
+## Update and local-state security
+
+`Updates.swift` owns one Sparkle controller, started only by AppDelegate. It binds
+Settings directly to Sparkle's KVO preferences. Measurement timers are independent.
+The updater delegate postpones requested relaunches while measurements are active.
+The framework uses the public key and verification requirements in Info.plist; see
+[Releasing](RELEASING.md#signed-in-app-updates) for signing, hosting and trust boundaries.
+
+State directories use 0700 and files use 0600, including migration of existing files.
+Final state paths reject symbolic links; private files also reject hard links and
+unexpected ownership. Parent Application Support permissions are not changed.
+This protects against other local users, not another process already running as the
+same user or an administrator. Diagnostic subprocess error files are created at 0600.
+
+`private_state.py` secures the SQLite database, journal/WAL/SHM, lock, quota reports
+and observer backup files. The dedicated collector uses umask 077 for new writes.
+The observer forwards the original footer even if capture cannot secure its state.
+The build extractor writes regular files before creating any links, rejects duplicate
+paths and entries beneath links, then resolves every link inside the extraction root.
+Hard links are unsupported. Nothing from an extracted runtime executes until validation
+has completed. The downloaded runtime checksum remains mandatory.

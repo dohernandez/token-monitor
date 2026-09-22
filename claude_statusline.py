@@ -2,6 +2,7 @@
 """Capture only quota fields, then forward unchanged stdin to the prior status line."""
 import hashlib,json,os,subprocess,sys,tempfile,time
 from pathlib import Path
+from private_state import secure_directory, secure_state
 from quotas import windows
 
 def capture(raw,state):
@@ -15,7 +16,7 @@ def capture(raw,state):
         normalized[w['id']]=dict(used_percentage=w['used'],resets_at=w['resetsAt'])
     sid=data.get('session_id')
     if not isinstance(sid,str) or not sid:return
-    target=Path(state)/'claude-limits';target.mkdir(parents=True,exist_ok=True,mode=0o700)
+    target=secure_directory(secure_state(state)/'claude-limits')
     payload=dict(observed=time.time(),rate_limits=normalized)
     name=hashlib.sha256(sid.encode()).hexdigest()+'.json'
     fd,tmp=tempfile.mkstemp(prefix='.quota-',dir=target)

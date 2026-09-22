@@ -19,6 +19,7 @@ subscription view for provider-reported allowance and reset times.
 - [Usage](#usage)
 - [Subscriptions and alerts](#subscriptions-and-alerts)
 - [Privacy and accounting limits](#privacy-and-accounting-limits)
+- [App updates](#app-updates)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 
@@ -33,11 +34,11 @@ subscription view for provider-reported allowance and reset times.
 
 Built with SwiftUI, AppKit, and a Python standard-library collector. **Version 1.0.0** is the first stable version. CI produces drag-to-Applications DMGs
 for macOS 15+, with separate Apple Silicon and Intel downloads. Builds are ad-hoc
-signed; Apple notarization and launch-at-login are not configured.
+signed; Apple notarization and launch-at-login are not configured. Signed in-app updates are available from Settings.
 
 ## Installation
 
-Download the DMG for your Mac from [Releases](https://github.com/dohernandez/token-monitor/releases), quit the previous copy, and drag the app into **Applications**. The first downloads appear after the release PR merges and CI finishes. These builds are not Apple-notarized; see the [release and installation guide](docs/RELEASING.md).
+Download the DMG for your Mac from [Releases](https://github.com/dohernandez/token-monitor/releases), quit the previous copy, and drag the app into **Applications**. These builds are not Apple-notarized; see the [release and installation guide](docs/RELEASING.md).
 
 ### Build from source
 
@@ -47,7 +48,7 @@ The build downloads a checksum-pinned Python runtime. No third-party Python pack
 ```sh
 git clone https://github.com/dohernandez/token-monitor.git
 cd token-monitor
-python3 -m unittest -v test_collector.py test_quotas.py
+python3 -m unittest -v test_collector.py test_quotas.py test_privacy.py
 sh build.sh
 "build/Token Monitor.app/Contents/MacOS/TokenMonitor" --self-test
 codesign --verify --deep --strict "build/Token Monitor.app"
@@ -104,7 +105,8 @@ Refreshing local files does not force Claude or Codex to publish a new report.
 
 ## Privacy and accounting limits
 
-The app reads local records and makes no network requests. Source logs and the
+The app reads local records. Optional update checks contact GitHub, without sending
+usage records or a system profile. Source logs and the
 OpenCode database are read-only. Its private cache at
 `~/Library/Application Support/TokenMonitor/` holds usage metadata, IDs, model names,
 and paths—not conversation or compaction summary text.
@@ -116,6 +118,23 @@ subscription windows must not be added together. Unknown model aliases remain un
 
 No cost estimates, configurable budgets, exports, or complete account reconciliation
 are provided. The [data guide](docs/USAGE.md) records the collection and coverage limits.
+
+## App updates
+
+Open **Settings → App updates** to check manually or enable daily checks and automatic
+installation. Automatic options default off and save immediately. The app verifies
+Ed25519 signatures on the feed and download before extraction; a checksum alone is
+not accepted. Version 1.0.0 needs one manual upgrade to gain this feature. See the
+[update and key-management guide](docs/RELEASING.md#signed-in-app-updates).
+
+<p align="center">
+  <img src="docs/screenshots/settings.png" alt="Token Monitor settings with signed update options" width="460">
+</p>
+
+*Settings preview; the updater is not started in this offscreen rendering.*
+
+Cache directories are restricted to the owner (0700), with private cache files at
+0600. Existing cache permissions are tightened without resetting saved data.
 
 ## Documentation
 
