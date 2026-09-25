@@ -234,7 +234,6 @@ struct GroupRow:View {
                     metric("Cache write",group.rows.reduce(0){$0+$1.cacheWrite})
                 }.padding(.vertical,5)
                 if store.tab=="Agents" {
-                    compactionPanel
                     ownershipSection("PARENT USAGE",key:\Usage.ownTotal)
                     if group.rows.contains(where:{$0.subagentTotal>0}) {
                         ownershipSection("SUBAGENT USAGE",key:\Usage.subagentTotal)
@@ -254,6 +253,7 @@ struct GroupRow:View {
                             HStack {Text(child.title);Text("Active").foregroundStyle(accent);Spacer();Text(compact(child.total))}.font(.system(size:10))
                         }.tint(accent)
                     }
+                    compactionPanel
                 }
                 if store.tab != "Agents" {
                 ForEach(group.rows.sorted {
