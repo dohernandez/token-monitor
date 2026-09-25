@@ -21,7 +21,16 @@ func launchDiagnostic(_ phase:String,_ item:NSStatusItem?=nil) {
 let canvasColor = Color(red:0.12,green:0.14,blue:0.17)
 let surface = Color(red:0.17,green:0.19,blue:0.23)
 let accent = Color(red:0.64,green:0.72,blue:1)
-func quotaLevel(_ used:Double)->Int { used>=90 ? 2 : used>=75 ? 1 : 0 }
+struct QuotaThresholds: Equatable {
+    var warning = 75
+    var critical = 90
+    static func valid(warning: Int, critical: Int) -> Bool {
+        (1...100).contains(warning) && (1...100).contains(critical) && warning < critical
+    }
+}
+func quotaLevel(_ used:Double, thresholds:QuotaThresholds = QuotaThresholds())->Int {
+    used >= Double(thresholds.critical) ? 2 : used >= Double(thresholds.warning) ? 1 : 0
+}
 func quotaColor(_ level:Int)->Color { level==2 ? Color(red:0.96,green:0.46,blue:0.45) : level==1 ? Color(red:0.94,green:0.79,blue:0.35) : accent }
 func compact(_ n:Int64)->String {
     if n >= 1_000_000_000 { return String(format:"%.2fB",Double(n)/1_000_000_000) }
@@ -41,16 +50,16 @@ struct Source:Decodable { let name:String;let available:Bool }
 struct WindowUsage:Decodable {let records:Int;let input:Int64;let output:Int64;let cacheRead:Int64;let cacheWrite:Int64;let total:Int64;let startsAt:Double;let through:Double}
 struct Subscription:Decodable,Identifiable { let id:String;let source:String;let label:String;let used:Double?;let resetsAt:Double?;let observed:Double?;let state:String;var localUsage:WindowUsage?=nil }
 // A stale warning remains useful until its known reset; missing windows are not zero.
-func quotaWarnings(_ subscriptions:[Subscription], now:Double)->[Subscription] {
+func quotaWarnings(_ subscriptions:[Subscription], now:Double, thresholds:QuotaThresholds = QuotaThresholds())->[Subscription] {
     subscriptions.filter {
         guard let used=$0.used, used.isFinite, (0...100).contains(used),
               let reset=$0.resetsAt, reset>now, let observed=$0.observed,
               observed.isFinite, observed<=now+60 else {return false}
-        return quotaLevel(used)>0
+        return quotaLevel(used,thresholds:thresholds)>0
     }
 }
-func subscriptionWarningLevel(_ subscriptions:[Subscription], now:Double)->Int {
-    quotaWarnings(subscriptions,now:now).map {quotaLevel($0.used!)}.max() ?? 0
+func subscriptionWarningLevel(_ subscriptions:[Subscription], now:Double, thresholds:QuotaThresholds = QuotaThresholds())->Int {
+    quotaWarnings(subscriptions,now:now,thresholds:thresholds).map {quotaLevel($0.used!,thresholds:thresholds)}.max() ?? 0
 }
 struct LiveSession:Decodable {let source:String;let session:String;let name:String}
 struct CompactionSummary:Decodable {let source:String;let session:String;let count:Int;let durationSeconds:Double;let durationsRecorded:Int;let beforeTokens:Int64?;let afterTokens:Int64?;let lastAt:Double}
@@ -82,9 +91,15 @@ final class Store:ObservableObject {
     @Published var setupMessage: String?
     @Published var installingObserver = false
     let preferences:UserDefaults
+    @Published private(set) var quotaThresholds = QuotaThresholds()
     @Published private(set) var refreshSeconds:Int
     init(preferences:UserDefaults = .standard) {
         self.preferences=preferences
+        let warning = preferences.object(forKey:"quotaWarningPercent") as? Int ?? 75
+        let critical = preferences.object(forKey:"quotaCriticalPercent") as? Int ?? 90
+        if QuotaThresholds.valid(warning:warning,critical:critical) {
+            quotaThresholds = QuotaThresholds(warning:warning,critical:critical)
+        }
         sourceConfiguration = preferences.data(forKey:"sourceConfiguration").flatMap { try? JSONDecoder().decode(SourceConfiguration.self,from:$0) } ?? SourceConfiguration.defaults()
         let saved=preferences.integer(forKey:"refreshSeconds")
         refreshSeconds=(5...3600).contains(saved) ? saved : 30
@@ -92,6 +107,14 @@ final class Store:ObservableObject {
     @discardableResult func configureRefresh(_ seconds:Int)->Bool {
         guard (5...3600).contains(seconds) else{return false}
         refreshSeconds=seconds;preferences.set(seconds,forKey:"refreshSeconds");scheduleTimer();return true
+    }
+    @discardableResult func configureQuotaThresholds(warning:Int, critical:Int)->Bool {
+        guard QuotaThresholds.valid(warning:warning,critical:critical) else { return false }
+        quotaThresholds = QuotaThresholds(warning:warning,critical:critical)
+        preferences.set(warning,forKey:"quotaWarningPercent")
+        preferences.set(critical,forKey:"quotaCriticalPercent")
+        onUpdate?()
+        return true
     }
     func saveSources() {
         preferences.set(try? JSONEncoder().encode(sourceConfiguration),forKey:"sourceConfiguration")
@@ -325,6 +348,7 @@ struct GroupRow:View {
 }
 struct SubscriptionPanel:View {
     let subscriptions:[Subscription]
+    var thresholds = QuotaThresholds()
     var body:some View {
         TimelineView(.periodic(from:.now,by:30)) { context in
             VStack(alignment:.leading,spacing:10) {
@@ -338,11 +362,11 @@ struct SubscriptionPanel:View {
                             Text(quota.label).foregroundStyle(.secondary)
                             Spacer()
                             if let used=quota.used, !expired {
-                                Text(String(format:"%.0f%% used",used)).monospacedDigit().foregroundStyle(quotaColor(quotaLevel(used)))
+                                Text(String(format:"%.0f%% used",used)).monospacedDigit().foregroundStyle(quotaColor(quotaLevel(used,thresholds:thresholds)))
                             } else { Text(expired ? "Awaiting reset update":"Not available").foregroundStyle(.secondary).font(.system(size:10)) }
                         }.font(.system(size:11))
                         if let used=quota.used, !expired {
-                            ProgressView(value:min(100,max(0,used)),total:100).tint(quotaColor(quotaLevel(used)))
+                            ProgressView(value:min(100,max(0,used)),total:100).tint(quotaColor(quotaLevel(used,thresholds:thresholds)))
                         }
                         if !expired {
                             if let usage=quota.localUsage {
@@ -390,12 +414,13 @@ struct SubscriptionPanel:View {
     }
 }
 struct AlertLegend:View {
+    var thresholds = QuotaThresholds()
     var body:some View {
         VStack(alignment:.leading,spacing:12) {
             Text("Alert legend").font(.system(size:13,weight:.semibold))
-            row("Red · 90% or more used.",symbol:"exclamationmark.circle.fill",color:quotaColor(2))
-            row("Yellow · 75% to below 90% used.",symbol:"exclamationmark.circle.fill",color:quotaColor(1))
-            row("No badge · No reported window at 75% or above.",symbol:"chart.bar.xaxis",color:.secondary)
+            row("Red · \(thresholds.critical)% or more used.",symbol:"exclamationmark.circle.fill",color:quotaColor(2))
+            row("Yellow · \(thresholds.warning)% to below \(thresholds.critical)% used.",symbol:"exclamationmark.circle.fill",color:quotaColor(1))
+            row("No badge · No reported window at \(thresholds.warning)% or above.",symbol:"chart.bar.xaxis",color:.secondary)
             Text("Red takes priority across Claude and Codex. The menu bar badge and Subscriptions dot use the same thresholds.")
                 .font(.system(size:11)).foregroundStyle(.secondary)
             Text("Older warnings retain their color until the reported reset. Expired or missing windows are unknown; no badge does not guarantee available allowance. Open Subscriptions to check report times.")
@@ -450,6 +475,39 @@ struct SourceSettings: View {
         }.font(.system(size:11)).disabled(store.loading || store.installingObserver)
     }
 }
+struct QuotaAlertSettings: View {
+    @ObservedObject var store: Store
+    @State private var warning = ""
+    @State private var critical = ""
+    @State private var invalid = false
+    var body: some View {
+        VStack(alignment:.leading,spacing:10) {
+            Text("Subscription alerts").font(.system(size:13,weight:.semibold))
+            HStack {
+                Text("Yellow at")
+                TextField("75",text:$warning).textFieldStyle(.roundedBorder).frame(width:60).accessibilityLabel("Warning quota usage percentage")
+                Text("% used or more")
+            }
+            HStack {
+                Text("Red at")
+                TextField("90",text:$critical).textFieldStyle(.roundedBorder).frame(width:60).accessibilityLabel("Critical quota usage percentage")
+                Text("% used or more")
+            }
+            Text("Whole percentages from 1 to 100. Yellow must be lower than red. Applies to provider-reported allowance used, not token totals.").foregroundStyle(.secondary)
+            if invalid { Text("Enter whole percentages: 1 ≤ yellow < red ≤ 100.").foregroundStyle(.red) }
+            Button("Save alert thresholds") {
+                guard let w = Int(warning.trimmingCharacters(in:.whitespaces)),
+                      let c = Int(critical.trimmingCharacters(in:.whitespaces)),
+                      store.configureQuotaThresholds(warning:w,critical:c) else { invalid = true; return }
+                invalid = false
+            }.buttonStyle(.borderedProminent).tint(accent).foregroundStyle(.black)
+            Text("Saved thresholds apply immediately and are remembered after restart.").foregroundStyle(.secondary)
+            Divider()
+            AlertLegend(thresholds:store.quotaThresholds)
+        }.font(.system(size:11))
+        .onAppear { warning = String(store.quotaThresholds.warning); critical = String(store.quotaThresholds.critical) }
+    }
+}
 struct TokenSettings:View {
     @ObservedObject var store:Store
     let close:()->Void
@@ -475,9 +533,9 @@ struct TokenSettings:View {
                 Divider().padding(.vertical,3)
                 SourceSettings(store:store)
                 Divider()
-                UpdateSettings()
+                QuotaAlertSettings(store:store)
                 Divider()
-                AlertLegend()
+                UpdateSettings()
             }.padding(20)
         }.onAppear {seconds=String(store.refreshSeconds)}
     }
@@ -496,7 +554,7 @@ struct Dashboard:View {
                 TimelineView(.periodic(from:.now,by:30)) { context in
                     HStack(spacing:4) {
                         pageButton("Usage",warningLevel:0)
-                        pageButton("Subscriptions",warningLevel:subscriptionWarningLevel(store.data?.subscriptions ?? [],now:context.date.timeIntervalSince1970))
+                        pageButton("Subscriptions",warningLevel:subscriptionWarningLevel(store.data?.subscriptions ?? [],now:context.date.timeIntervalSince1970,thresholds:store.quotaThresholds))
                     }.padding(3).background(.black.opacity(0.15),in:RoundedRectangle(cornerRadius:9))
                 }
                 }
@@ -540,7 +598,7 @@ struct Dashboard:View {
                         } else {
                             Text(store.subscriptionStatus(subscriptionProvider)).font(.caption).foregroundStyle(.secondary)
                         }
-                        SubscriptionPanel(subscriptions:(store.data?.subscriptions ?? []).filter { $0.source==subscriptionProvider })
+                        SubscriptionPanel(subscriptions:(store.data?.subscriptions ?? []).filter { $0.source==subscriptionProvider },thresholds:store.quotaThresholds)
 
                     }.padding(14)
                 }
@@ -596,7 +654,7 @@ struct Dashboard:View {
         Button { page=title;information=false;settings=false } label: {
             HStack(spacing:6) {
                 Text(title).font(.system(size:12,weight:.semibold))
-                if warningLevel>0 {Circle().fill(quotaColor(warningLevel)).frame(width:6,height:6).accessibilityLabel(warningLevel==2 ? "Subscription usage at least 90 percent":"Subscription usage at least 75 percent")}
+                if warningLevel>0 {Circle().fill(quotaColor(warningLevel)).frame(width:6,height:6).accessibilityLabel(warningLevel==2 ? "Subscription usage at least \(store.quotaThresholds.critical) percent":"Subscription usage at least \(store.quotaThresholds.warning) percent")}
             }.frame(maxWidth:.infinity).padding(.vertical,8)
                 .background(page==title ? Color.white.opacity(0.17):Color.clear,in:RoundedRectangle(cornerRadius:6))
                 .contentShape(Rectangle())
@@ -655,8 +713,8 @@ final class AppDelegate:NSObject,NSApplicationDelegate,NSPopoverDelegate {
     func updateStatusIcon() {
         let now=Date().timeIntervalSince1970
         let subscriptions=store.data?.subscriptions ?? []
-        let warnings=quotaWarnings(subscriptions,now:now)
-        badge.level=subscriptionWarningLevel(subscriptions,now:now);badge.isHidden=badge.level==0
+        let warnings=quotaWarnings(subscriptions,now:now,thresholds:store.quotaThresholds)
+        badge.level=subscriptionWarningLevel(subscriptions,now:now,thresholds:store.quotaThresholds);badge.isHidden=badge.level==0
         var lines=["Token Monitor · "+compact(store.total)+" recorded tokens"]
         for quota in warnings {
             lines.append("\(quota.source) · \(quota.label) · \(Int(quota.used!))% used" + (now-(quota.observed ?? 0)>300 ? " · stale report" : ""))
@@ -730,6 +788,30 @@ if CommandLine.arguments.contains("--self-test") {
     let custom=SourceConfiguration(usage:["Claude"],subscriptions:[],paths:["Claude":"/fixture/custom"],handoff:false)
     prefs.set(try JSONEncoder().encode(custom),forKey:"sourceConfiguration")
     let restored=Store(preferences:prefs);precondition(restored.refreshSeconds==60 && restored.sourceConfiguration == custom)
+    precondition(store.quotaThresholds == QuotaThresholds())
+    var badgeUpdates = 0
+    store.onUpdate = { badgeUpdates += 1 }
+    let activeTimer = store.timer
+    precondition(store.configureQuotaThresholds(warning:60,critical:80))
+    precondition(badgeUpdates == 1 && store.timer === activeTimer && !store.loading && store.process == nil)
+    let limits = store.quotaThresholds
+    precondition(subscriptionWarningLevel([q(59.99)],now:1000,thresholds:limits) == 0)
+    precondition(subscriptionWarningLevel([q(60)],now:1000,thresholds:limits) == 1)
+    precondition(subscriptionWarningLevel([q(79.99)],now:1000,thresholds:limits) == 1)
+    precondition(subscriptionWarningLevel([q(80)],now:1000,thresholds:limits) == 2)
+    precondition(subscriptionWarningLevel([q(65),q(85,2000,990,"Codex")],now:1000,thresholds:limits) == 2)
+    precondition(subscriptionWarningLevel([q(85,2000,100)],now:1000,thresholds:limits) == 2)
+    precondition(subscriptionWarningLevel([q(85,1000),q(nil),q(.nan),q(101)],now:1000,thresholds:limits) == 0)
+    precondition(quotaWarnings([q(59),q(60)],now:1000,thresholds:limits).count == 1)
+    for pair in [(0,80),(60,101),(80,80),(90,80)] {
+        precondition(!store.configureQuotaThresholds(warning:pair.0,critical:pair.1))
+    }
+    precondition(store.quotaThresholds == limits && badgeUpdates == 1)
+    precondition(Store(preferences:prefs).quotaThresholds == limits)
+    precondition(QuotaThresholds.valid(warning:1,critical:100))
+    prefs.set(95,forKey:"quotaWarningPercent");prefs.set(80,forKey:"quotaCriticalPercent")
+    precondition(Store(preferences:prefs).quotaThresholds == QuotaThresholds(), "Invalid saved pairs fall back together")
+    print("PASS: configurable quota thresholds, boundaries, immediate update, persistence and invalid saved pairs")
     store.timer?.invalidate();prefs.removePersistentDomain(forName:suite)
     print("PASS: refresh settings validation, timer replacement and persistence")
 } else {

@@ -118,9 +118,15 @@ and [Codex rate-limit protocol](https://learn.chatgpt.com/docs/app-server).
 
 Subscription cards, window-specific local token totals and reset countdowns live in Subscriptions; period-filtered token totals,
 period selection, agent/model/project grouping, and coverage notices live in Usage.
-Quota percentages and bars are yellow at >=75% and red at >=90%, with the normal
-accent below 75%. Stale readings retain the color of their last reported usage; the separate stale
-label and timestamp communicate freshness. The menu bar warning badge and tab dot use the highest reported level across both providers. Yellow means >=75%, red means >=90%, and red takes priority. Stale warnings remain until their known reset time; the tooltip labels stale reports. Expired or missing windows are unknown and do not create a usage badge. No badge is not proof that every window is available. These warnings never derive from token spend.
+Quota percentages and bars use the saved yellow and red usage thresholds, defaulting
+to >=75% and >=90%. Settings → Subscription alerts accepts whole percentages with
+1 ≤ yellow < red ≤ 100. Save alert thresholds applies immediately and remembers the
+pair across restarts. The legend below reflects saved values; App updates is last.
+The menu badge and tab dot use the same thresholds and highest reported level
+across both providers. Stale reports retain their warning under the saved thresholds
+until the known reset; timestamps and the tooltip communicate age. Expired or
+missing windows remain unknown and do not create a badge. No badge is not proof
+that every window is available. These warnings never derive from token spend.
 Tab switching retains the selected usage period and grouping without a new scan.
 
 Subscriptions has Claude and Codex subtabs, with Claude initially selected. Each

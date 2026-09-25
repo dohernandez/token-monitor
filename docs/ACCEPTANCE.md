@@ -30,7 +30,7 @@ retest runtime code. Successful compilation is not visual acceptance.
 - Parent/subagent totals reconcile; completed children stay hidden, spending retained.
 - Models expand to folders; model/project outer cards remain usage-ranked.
 - Quotas display their own timestamps/reset, visible local-token caveat and no
-  invented zero on expiry. Alerts: yellow >=75%, red >=90%, red priority.
+  invented zero on expiry. Alerts default to yellow >=75%, red >=90%, with red priority; saved custom thresholds apply everywhere.
 - Yellow compaction panel distinguishes metadata from unverified token spending.
 - Settings contains the alert legend; Settings/Info hide main navigation, retain
   footer and fixed bottom-right Back. Back restores prior view and discards edits.
@@ -85,3 +85,15 @@ disabled historical totals/alerts, name fallback without handoff, setup confirma
 cancellation, and first Claude report. Automated fixtures cover config round-trip,
 source detection/filtering, parent totals without handoff, and observer installation
 with/without a prior status line. Native picker/setup interaction remains manual.
+
+## Configurable subscription alerts
+
+- Settings order: refresh interval, sources/subscriptions, subscription thresholds,
+  alert legend directly below thresholds, then App updates last.
+- Save valid whole percentages with 1 ≤ yellow < red ≤ 100. Badge, tab dot, quota
+  colors and legend update immediately without starting a collection. Restart keeps
+  the pair; leaving unsaved edits does not change thresholds.
+- Reject equal/reversed/out-of-range values. Native fixtures cover custom boundaries,
+  cross-provider priority, stale reports, expired/missing/invalid data, callback
+  delivery without timer replacement, persistence, and invalid saved-pair fallback.
+- Existing token accounting, source settings and observer configuration are unchanged.

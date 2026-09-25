@@ -94,11 +94,13 @@ recorded within that window.
 
 | Badge | Reported allowance used |
 |---|---|
-| 🔴 Red ! | **90% or more** |
-| 🟡 Yellow ! | **75% to below 90%** |
-| No badge | No available, unexpired report at 75% or above |
+| 🔴 Red ! | **90% or more** (default) |
+| 🟡 Yellow ! | **75% to below 90%** (defaults) |
+| No badge | No available, unexpired report at the saved yellow threshold or above |
 
-The highest warning across both providers wins. Reports older than five minutes are
+Configure the percentages in **Settings → Subscription alerts** (1 ≤ yellow < red ≤ 100).
+The legend follows these controls, and App updates is the last Settings section.
+Saved thresholds apply immediately and persist across restarts. The highest warning across both providers wins. Reports older than five minutes are
 marked stale and retain their last warning until the reported reset. Expired or
 missing windows are **unknown**, not 0% used. Settings contains the full legend.
 Refreshing local files does not force Claude or Codex to publish a new report.
