@@ -142,8 +142,10 @@ cancellation, and first Claude report. Automated fixtures cover config round-tri
 source detection/filtering, parent totals without handoff, and observer installation
 with/without a prior status line. Native picker/setup interaction remains manual.
 
-Subscriptions includes a header warning listing unexpired provider windows at the
+Subscriptions includes one header warning card per provider, listing its unexpired windows at the
 saved thresholds, sharing badge/legend colors and stale-report handling. It covers
-both providers like the tab dot. Normal source inactivity is returned separately as
+both providers like the tab dot; each card uses that provider’s own highest warning color. Normal source inactivity is returned separately as
 `information` and rendered neutrally; malformed/missing/unreadable source warnings
 remain in `notices`. Missing records do not establish zero spending or failed coverage.
+
+Subscription warning cards show each window’s reset countdown from the provider-reported reset timestamp, refreshed every 30 seconds. Expired windows leave the warning cards; reset times are never inferred from local token usage.
