@@ -141,3 +141,9 @@ disabled historical totals/alerts, name fallback without handoff, setup confirma
 cancellation, and first Claude report. Automated fixtures cover config round-trip,
 source detection/filtering, parent totals without handoff, and observer installation
 with/without a prior status line. Native picker/setup interaction remains manual.
+
+Subscriptions includes a header warning listing unexpired provider windows at the
+saved thresholds, sharing badge/legend colors and stale-report handling. It covers
+both providers like the tab dot. Normal source inactivity is returned separately as
+`information` and rendered neutrally; malformed/missing/unreadable source warnings
+remain in `notices`. Missing records do not establish zero spending or failed coverage.

@@ -308,11 +308,12 @@ def snapshot(db,days,notices,sources,pending,config=None):
     rows=list(aggregated.values())
     active_children=[dict(c,models=[dict(model=k,total=v) for k,v in c['models'].items()]) for c in active.values()]
     if any(r['model'].startswith(('Unresolved','Unknown')) for r in rows):notices.append('Some records lack an actual model name; aliases are not guessed.')
+    information=[]
     for source in sources:
         latest=db.execute('SELECT max(stamp) FROM events WHERE source=?',(source['name'],)).fetchone()[0]
         if source['available'] and (latest is None or time.time()-latest>86400):
-            notices.append(source['name']+': no usage recorded in the last 24 hours. Coverage may be incomplete.')
-    return dict(rows=rows,activeChildren=active_children,notices=notices,sources=sources,indexing=pending>0,updated=time.time())
+            information.append(source['name']+': no usage recorded in the last 24 hours.')
+    return dict(rows=rows,activeChildren=active_children,notices=notices,information=information,sources=sources,indexing=pending>0,updated=time.time())
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--home',type=Path,default=Path.home());p.add_argument('--state',type=Path);p.add_argument('--config',default='{}');p.add_argument('--days',type=int,choices=[1,7,30],default=1);a=p.parse_args()

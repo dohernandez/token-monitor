@@ -97,3 +97,9 @@ with/without a prior status line. Native picker/setup interaction remains manual
   cross-provider priority, stale reports, expired/missing/invalid data, callback
   delivery without timer replacement, persistence, and invalid saved-pair fallback.
 - Existing token accounting, source settings and observer configuration are unchanged.
+
+- Subscriptions header lists high-usage windows in saved yellow/red threshold colors;
+  stale warnings remain labelled until reset, expired/unknown windows do not warn.
+- An enabled provider with no recent records shows neutral informational text, without
+  suggesting incomplete coverage merely from inactivity. Actual read/parse warnings
+  remain warnings. Verify header wrapping and neutral notice contrast visually.
