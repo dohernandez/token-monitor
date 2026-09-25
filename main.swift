@@ -63,7 +63,7 @@ func subscriptionWarningLevel(_ subscriptions:[Subscription], now:Double, thresh
 }
 struct LiveSession:Decodable {let source:String;let session:String;let name:String}
 struct CompactionSummary:Decodable {let source:String;let session:String;let count:Int;let durationSeconds:Double;let durationsRecorded:Int;let beforeTokens:Int64?;let afterTokens:Int64?;let lastAt:Double}
-struct Snapshot:Decodable {let compactions:[CompactionSummary]?;let activeSessions:[LiveSession]?; let rows:[Usage];let activeChildren:[ActiveChild];let subscriptions:[Subscription];let notices:[String];let sources:[Source];let indexing:Bool;let updated:Double }
+struct Snapshot:Decodable {let compactions:[CompactionSummary]?;let activeSessions:[LiveSession]?; let rows:[Usage];let activeChildren:[ActiveChild];let subscriptions:[Subscription];let notices:[String];var information:[String]?=nil;let sources:[Source];let indexing:Bool;let updated:Double }
 struct Group:Identifiable {
     let id:String;let title:String;let subtitle:String;let rows:[Usage];let active:Bool
     var total:Int64 { rows.reduce(0){$0+$1.total} }
@@ -346,6 +346,28 @@ struct GroupRow:View {
     }
     func metric(_ name:String,_ value:Int64)->some View { VStack(alignment:.leading,spacing:3){Text(name).font(.system(size:9)).foregroundStyle(.secondary);Text(compact(value)).font(.system(size:11,weight:.medium)).monospacedDigit()}.frame(maxWidth:.infinity,alignment:.leading) }
 }
+struct SubscriptionWarning:View {
+    let subscriptions:[Subscription]
+    var thresholds = QuotaThresholds()
+    var body:some View {
+        TimelineView(.periodic(from:.now,by:30)) { context in
+            let now=context.date.timeIntervalSince1970
+            let warnings=quotaWarnings(subscriptions,now:now,thresholds:thresholds)
+            let level=subscriptionWarningLevel(subscriptions,now:now,thresholds:thresholds)
+            if !warnings.isEmpty {
+                VStack(alignment:.leading,spacing:5) {
+                    Label("High subscription usage",systemImage:"exclamationmark.circle.fill")
+                        .font(.system(size:12,weight:.semibold)).foregroundStyle(quotaColor(level))
+                    ForEach(warnings) { quota in
+                        Text(quota.source+" · "+quota.label+String(format:": %.0f%% used",quota.used!)+(now-(quota.observed ?? 0)>300 ? " · stale report" : ""))
+                            .font(.system(size:10)).foregroundStyle(quotaColor(quotaLevel(quota.used!,thresholds:thresholds)))
+                    }
+                }.frame(maxWidth:.infinity,alignment:.leading).padding(10)
+                    .background(quotaColor(level).opacity(0.10),in:RoundedRectangle(cornerRadius:8))
+            }
+        }
+    }
+}
 struct SubscriptionPanel:View {
     let subscriptions:[Subscription]
     var thresholds = QuotaThresholds()
@@ -565,6 +587,7 @@ struct Dashboard:View {
                 } else if !information && !settings {
                     Text("Your subscription limits").font(.system(size:24,weight:.semibold,design:.rounded))
                     Text("Allowance used and time until reset").font(.system(size:12)).foregroundStyle(.white.opacity(0.65))
+                    SubscriptionWarning(subscriptions:store.data?.subscriptions ?? [],thresholds:store.quotaThresholds)
                 }
             }.padding(20).background(LinearGradient(colors:[Color(red:0.19,green:0.22,blue:0.39),Color(red:0.16,green:0.19,blue:0.28)],startPoint:.topLeading,endPoint:.bottomTrailing))
             if settings {
@@ -608,6 +631,11 @@ struct Dashboard:View {
                     LazyVStack(alignment:.leading,spacing:10) {
                         if let error=store.error { notice("Refresh failed · saved view retained\n"+error) }
                         ForEach(store.data?.notices ?? [],id:\.self){notice($0)}
+                        ForEach(store.data?.information ?? [],id:\.self) { text in
+                            Text(text).font(.system(size:10)).foregroundStyle(.secondary)
+                                .frame(maxWidth:.infinity,alignment:.leading).padding(10)
+                                .background(surface,in:RoundedRectangle(cornerRadius:8))
+                        }
                         if store.groups.isEmpty {
                             VStack(spacing:12){Image(systemName:store.loading ? "hourglass":"chart.bar").font(.system(size:26));Text(store.loading ? "Reading local usage…":"No recorded usage in this period");Text(store.sourceConfiguration.usage.isEmpty ? "Enable a client in Settings → Sources & subscriptions to get started." : "Try 7 or 30 days. Missing records are not proof of zero usage.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)}.frame(maxWidth:.infinity).padding(.vertical,35)
                         }

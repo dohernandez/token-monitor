@@ -12,6 +12,18 @@ class CollectorTests(unittest.TestCase):
         self.db=sqlite3.connect(':memory:');self.db.executescript(c.SCHEMA)
         self.stamp=dt.datetime.now(dt.timezone.utc).isoformat()
     def tearDown(self): self.db.close();self.temp.cleanup()
+    def test_inactive_provider_is_information_not_coverage_warning(self):
+        sources=[dict(name='OpenCode',available=True)]
+        view=c.snapshot(self.db,1,[],sources,0)
+        self.assertEqual(view['notices'],[])
+        self.assertEqual(view['information'],['OpenCode: no usage recorded in the last 24 hours.'])
+        view=c.snapshot(self.db,1,['OpenCode read failed: fixture'],sources,0)
+        self.assertEqual(view['notices'],['OpenCode read failed: fixture'])
+        self.assertEqual(len(view['information']),1)
+        c.put(self.db,('recent','OpenCode','session','/fixture','known',c.time.time(),1,0,0,0))
+        self.assertEqual(c.snapshot(self.db,1,[],sources,0)['information'],[])
+        self.assertEqual(c.snapshot(self.db,1,[],[dict(name='Claude',available=False)],0)['information'],[])
+
     def test_zero_token_synthetic_placeholders_hidden_without_losing_usage(self):
         now=c.time.time()
         rows=[('placeholder','Claude','parent','<synthetic>',0,0,0,0),
