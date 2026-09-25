@@ -346,6 +346,12 @@ struct GroupRow:View {
     }
     func metric(_ name:String,_ value:Int64)->some View { VStack(alignment:.leading,spacing:3){Text(name).font(.system(size:9)).foregroundStyle(.secondary);Text(compact(value)).font(.system(size:11,weight:.medium)).monospacedDigit()}.frame(maxWidth:.infinity,alignment:.leading) }
 }
+func quotaCountdown(_ seconds:Double)->String {
+        let minutes=max(1,Int(ceil(seconds/60)))
+        if minutes>=1440 {return "\(minutes/1440)d \((minutes%1440)/60)h"}
+        if minutes>=60 {return "\(minutes/60)h \(minutes%60)m"}
+        return "\(minutes)m"
+    }
 struct SubscriptionWarning:View {
     let subscriptions:[Subscription]
     var thresholds = QuotaThresholds()
@@ -353,17 +359,20 @@ struct SubscriptionWarning:View {
         TimelineView(.periodic(from:.now,by:30)) { context in
             let now=context.date.timeIntervalSince1970
             let warnings=quotaWarnings(subscriptions,now:now,thresholds:thresholds)
-            let level=subscriptionWarningLevel(subscriptions,now:now,thresholds:thresholds)
-            if !warnings.isEmpty {
-                VStack(alignment:.leading,spacing:5) {
-                    Label("High subscription usage",systemImage:"exclamationmark.circle.fill")
-                        .font(.system(size:12,weight:.semibold)).foregroundStyle(quotaColor(level))
-                    ForEach(warnings) { quota in
-                        Text(quota.source+" · "+quota.label+String(format:": %.0f%% used",quota.used!)+(now-(quota.observed ?? 0)>300 ? " · stale report" : ""))
-                            .font(.system(size:10)).foregroundStyle(quotaColor(quotaLevel(quota.used!,thresholds:thresholds)))
-                    }
-                }.frame(maxWidth:.infinity,alignment:.leading).padding(10)
-                    .background(quotaColor(level).opacity(0.10),in:RoundedRectangle(cornerRadius:8))
+            VStack(alignment:.leading,spacing:8) {
+                ForEach(Array(Set(warnings.map(\.source))).sorted(),id:\.self) { source in
+                    let providerWarnings=warnings.filter {$0.source==source}
+                    let level=subscriptionWarningLevel(providerWarnings,now:now,thresholds:thresholds)
+                    VStack(alignment:.leading,spacing:5) {
+                        Label(source+" · high subscription usage",systemImage:"exclamationmark.circle.fill")
+                            .font(.system(size:12,weight:.semibold)).foregroundStyle(quotaColor(level))
+                        ForEach(providerWarnings) { quota in
+                            Text(quota.label+String(format:": %.0f%% used",quota.used!)+" · resets in "+quotaCountdown(quota.resetsAt!-now)+(now-(quota.observed ?? 0)>300 ? " · stale report" : ""))
+                                .font(.system(size:10)).foregroundStyle(quotaColor(quotaLevel(quota.used!,thresholds:thresholds)))
+                        }
+                    }.frame(maxWidth:.infinity,alignment:.leading).padding(10)
+                        .background(quotaColor(level).opacity(0.10),in:RoundedRectangle(cornerRadius:8))
+                }
             }
         }
     }
@@ -409,7 +418,7 @@ struct SubscriptionPanel:View {
                             HStack {
                                 Text((stale || expired ? "Stale · reported ":"Reported ")+Date(timeIntervalSince1970:observed).formatted(date:.abbreviated,time:.shortened))
                                 Spacer()
-                                if let reset=quota.resetsAt, !expired { Text("Resets in "+countdown(reset-context.date.timeIntervalSince1970)) }
+                                if let reset=quota.resetsAt, !expired { Text("Resets in "+quotaCountdown(reset-context.date.timeIntervalSince1970)) }
                             }.font(.system(size:9)).foregroundStyle(.secondary)
                         } else {
                             Text(quota.source=="Claude" ? "Waiting for Claude’s status-line update." : "Waiting for a Codex quota record.").font(.system(size:10)).foregroundStyle(.secondary)
@@ -428,12 +437,7 @@ struct SubscriptionPanel:View {
             Text(compact(value)).font(.system(size:10,weight:.medium)).monospacedDigit()
         }.frame(maxWidth:.infinity,alignment:.leading)
     }
-    func countdown(_ seconds:Double)->String {
-        let minutes=max(1,Int(ceil(seconds/60)))
-        if minutes>=1440 {return "\(minutes/1440)d \((minutes%1440)/60)h"}
-        if minutes>=60 {return "\(minutes/60)h \(minutes%60)m"}
-        return "\(minutes)m"
-    }
+
 }
 struct AlertLegend:View {
     var thresholds = QuotaThresholds()

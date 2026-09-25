@@ -98,8 +98,12 @@ with/without a prior status line. Native picker/setup interaction remains manual
   delivery without timer replacement, persistence, and invalid saved-pair fallback.
 - Existing token accounting, source settings and observer configuration are unchanged.
 
-- Subscriptions header lists high-usage windows in saved yellow/red threshold colors;
+- Subscriptions header has a separate card per provider, listing high-usage windows
+  in saved yellow/red threshold colors; one provider’s red warning must not color
+  another provider’s yellow card red;
   stale warnings remain labelled until reset, expired/unknown windows do not warn.
 - An enabled provider with no recent records shows neutral informational text, without
   suggesting incomplete coverage merely from inactivity. Actual read/parse warnings
   remain warnings. Verify header wrapping and neutral notice contrast visually.
+
+Subscription warning cards show each window’s reset countdown from the provider-reported reset timestamp, refreshed every 30 seconds. Expired windows leave the warning cards; reset times are never inferred from local token usage.
