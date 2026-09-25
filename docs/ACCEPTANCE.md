@@ -31,7 +31,8 @@ retest runtime code. Successful compilation is not visual acceptance.
 - Models expand to folders; model/project outer cards remain usage-ranked.
 - Quotas display their own timestamps/reset, visible local-token caveat and no
   invented zero on expiry. Alerts default to yellow >=75%, red >=90%, with red priority; saved custom thresholds apply everywhere.
-- Yellow compaction panel distinguishes metadata from unverified token spending.
+- Yellow compaction panel appears last in the expanded agent session, below parent,
+  subagent and active-child usage details, and distinguishes metadata from unverified token spending.
 - Settings contains the alert legend; Settings/Info hide main navigation, retain
   footer and fixed bottom-right Back. Back restores prior view and discards edits.
 - Saved interval survives restart; collection is not duplicated or interrupted by Save.
