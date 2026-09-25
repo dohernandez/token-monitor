@@ -101,7 +101,8 @@ with/without a prior status line. Native picker/setup interaction remains manual
 
 - Subscriptions header has a separate card per provider, listing high-usage windows
   in saved yellow/red threshold colors; one provider’s red warning must not color
-  another provider’s yellow card red;
+  another provider’s yellow card red. Yellow cards say “high subscription usage”;
+  red cards say “critical subscription usage”, using the same configured thresholds;
   stale warnings remain labelled until reset, expired/unknown windows do not warn.
 - An enabled provider with no recent records shows neutral informational text, without
   suggesting incomplete coverage merely from inactivity. Actual read/parse warnings

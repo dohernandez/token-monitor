@@ -364,7 +364,7 @@ struct SubscriptionWarning:View {
                     let providerWarnings=warnings.filter {$0.source==source}
                     let level=subscriptionWarningLevel(providerWarnings,now:now,thresholds:thresholds)
                     VStack(alignment:.leading,spacing:5) {
-                        Label(source+" · high subscription usage",systemImage:"exclamationmark.circle.fill")
+                        Label(source+(level==2 ? " · critical subscription usage" : " · high subscription usage"),systemImage:"exclamationmark.circle.fill")
                             .font(.system(size:12,weight:.semibold)).foregroundStyle(quotaColor(level))
                         ForEach(providerWarnings) { quota in
                             Text(quota.label+String(format:": %.0f%% used",quota.used!)+" · resets in "+quotaCountdown(quota.resetsAt!-now)+(now-(quota.observed ?? 0)>300 ? " · stale report" : ""))
