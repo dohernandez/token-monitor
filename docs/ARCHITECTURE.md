@@ -51,7 +51,12 @@ They can include API/other-account usage and omit other machines or missing hist
 Overlapping windows are not additive. Old Codex snapshots without duration wait for
 a newer report. Expired windows are unknown, never assumed zero.
 
-Yellow warning at 75%, red at 90%; highest unexpired reported warning wins across
+Yellow defaults to 75%, red to 90%; configurable `QuotaThresholds` values are shared
+by quota cards, the tab dot, menu badge, accessibility labels and Settings legend.
+Store saves `quotaWarningPercent`/`quotaCriticalPercent` in app UserDefaults and
+validates 1 ≤ yellow < red ≤ 100; invalid saved pairs fall back together. Saving
+updates the badge immediately without a collector run or timer replacement.
+The highest unexpired reported warning wins across
 providers. Stale reports retain their warning until reset. A separate 30-second
 in-memory timer updates badge expiry without an extra collector invocation.
 
