@@ -149,3 +149,5 @@ both providers like the tab dot; each card uses that provider’s own highest wa
 remain in `notices`. Missing records do not establish zero spending or failed coverage.
 
 Subscription warning cards show each window’s reset countdown from the provider-reported reset timestamp, refreshed every 30 seconds. Expired windows leave the warning cards; reset times are never inferred from local token usage.
+
+Usage supports Agents, Models, Projects and Subscriptions grouping. Subscriptions groups the selected period’s existing usage rows by client/source (including OpenCode), preserving parent rollups once. It is not account-level billing attribution: records may include API usage or multiple accounts. Allowance snapshots remain separate and are never added to these totals.
