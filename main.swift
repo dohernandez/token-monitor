@@ -203,11 +203,11 @@ final class Store:ObservableObject {
     }
     var groups:[Group] {
         let rows=data?.rows ?? []
-        let grouped=Dictionary(grouping:rows){ r in tab=="Models" ? r.model : tab=="Projects" ? r.project : r.source+":"+r.session }
+        let grouped=Dictionary(grouping:rows){ r in tab=="Models" ? r.model : tab=="Projects" ? r.project : tab=="Subscriptions" ? r.source : r.source+":"+r.session }
         return grouped.map { key,rows in
             let first=rows[0]
-            let title=tab=="Models" ? key : tab=="Projects" ? URL(fileURLWithPath:key).lastPathComponent : first.agent
-            let subtitle=tab=="Models" ? Set(rows.map(\.source)).sorted().joined(separator:" · ") : tab=="Projects" ? key.replacingOccurrences(of:NSHomeDirectory(),with:"~") : first.source+" · "+first.session.prefix(8)
+            let title=(tab=="Models" || tab=="Subscriptions") ? key : tab=="Projects" ? URL(fileURLWithPath:key).lastPathComponent : first.agent
+            let subtitle=tab=="Subscriptions" ? "Recorded client usage" : tab=="Models" ? Set(rows.map(\.source)).sorted().joined(separator:" · ") : tab=="Projects" ? key.replacingOccurrences(of:NSHomeDirectory(),with:"~") : first.source+" · "+first.session.prefix(8)
             return Group(id:key,title:title,subtitle:subtitle,rows:rows,active:tab=="Agents" && (data?.activeSessions ?? []).contains {$0.source==first.source && $0.session==first.session})
         }.sorted { if $0.active != $1.active {return $0.active};return $0.total == $1.total ? $0.id<$1.id : $0.total>$1.total }
     }
@@ -286,7 +286,7 @@ struct GroupRow:View {
         }.foregroundStyle(quotaColor(1)).frame(maxWidth:.infinity,alignment:.leading).padding(10).background(Color.yellow.opacity(0.06),in:RoundedRectangle(cornerRadius:8))
     }
     func rowSubtitle(_ row:Usage)->String {
-        let detail=store.tab=="Projects" ? row.model : URL(fileURLWithPath:row.project).lastPathComponent
+        let detail=store.tab=="Subscriptions" ? row.model+" · "+URL(fileURLWithPath:row.project).lastPathComponent : store.tab=="Projects" ? row.model : URL(fileURLWithPath:row.project).lastPathComponent
         return [row.source,String(row.session.prefix(8)),detail].joined(separator:" · ")
     }
     func detailRow(_ row:Usage)->some View {
@@ -602,7 +602,7 @@ struct Dashboard:View {
                         Text("About these measurements").font(.headline)
                         Text("Reads local Claude Code and Codex session logs, plus the OpenCode database. Source files are never modified. Usage appears after the client records it—not necessarily during generation.")
                         Text("Input, output, cache reads and cache writes are separate categories. Cached tokens are included once. Reasoning is not added again to output.")
-                        Text("Agent status is consistent across Agents, Models, and Projects: green Active means a registered session with a running owner at the last check, including idle sessions. Gray Unverified means we cannot confirm it is open; it is not proof of closure. Session IDs distinguish reused names. Active agent entries sort first; model and project cards remain ranked by total usage.")
+                        Text("Agent status is consistent across Agents, Models, Projects, and Subscriptions: green Active means a registered session with a running owner at the last check, including idle sessions. Gray Unverified means we cannot confirm it is open; it is not proof of closure. Session IDs distinguish reused names. Active agent entries sort first; model, project, and subscription cards remain ranked by total usage.")
                         Text("Model aliases such as default remain unresolved. Agent names use the local handoff registry when available; other sessions show their app and short ID. Historical names may be unavailable. Parent totals include subagent usage. Completed subagents are hidden; their usage stays in the subtotal. Individual subagents appear only with recent running evidence (within five minutes); missing status never removes their spend.")
                         Text("Token totals cover local records, not an account-wide bill. Subscription bars separately show provider-reported limits. Codex quota snapshots come from its local logs; Claude limits arrive through a status-line observer that preserves the existing footer. Readings older than five minutes are marked stale. An expired window is unknown until a new report arrives. No price estimates or budget alerts in this draft.")
                         Text("Refreshes every \(store.refreshSeconds) seconds. Initial indexing runs in bounded batches; totals are partial until it finishes. Date ranges use this Mac’s local calendar.")
@@ -630,7 +630,7 @@ struct Dashboard:View {
                     }.padding(14)
                 }
             } else {
-                Picker("Group by",selection:$store.tab){Text("Agents").tag("Agents");Text("Models").tag("Models");Text("Projects").tag("Projects")}.pickerStyle(.segmented).padding(14)
+                Picker("Group by",selection:$store.tab){Text("Agents").tag("Agents");Text("Models").tag("Models");Text("Projects").tag("Projects");Text("Subscriptions").tag("Subscriptions")}.pickerStyle(.segmented).font(.system(size:11)).padding(14)
                 ScrollView {
                     LazyVStack(alignment:.leading,spacing:10) {
                         if let error=store.error { notice("Refresh failed · saved view retained\n"+error) }
@@ -639,6 +639,10 @@ struct Dashboard:View {
                             Text(text).font(.system(size:10)).foregroundStyle(.secondary)
                                 .frame(maxWidth:.infinity,alignment:.leading).padding(10)
                                 .background(surface,in:RoundedRectangle(cornerRadius:8))
+                        }
+                        if store.tab=="Subscriptions" {
+                            Text("Recorded tokens grouped by client · may include API usage or multiple accounts. Subscription allowance is shown in the Subscriptions tab.")
+                                .font(.system(size:10)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
                         }
                         if store.groups.isEmpty {
                             VStack(spacing:12){Image(systemName:store.loading ? "hourglass":"chart.bar").font(.system(size:26));Text(store.loading ? "Reading local usage…":"No recorded usage in this period");Text(store.sourceConfiguration.usage.isEmpty ? "Enable a client in Settings → Sources & subscriptions to get started." : "Try 7 or 30 days. Missing records are not proof of zero usage.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)}.frame(maxWidth:.infinity).padding(.vertical,35)
@@ -845,6 +849,21 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(Store(preferences:prefs).quotaThresholds == QuotaThresholds(), "Invalid saved pairs fall back together")
     print("PASS: configurable quota thresholds, boundaries, immediate update, persistence and invalid saved pairs")
     store.timer?.invalidate();prefs.removePersistentDomain(forName:suite)
+    func usageFixture(_ source:String,_ session:String,_ model:String,_ total:Int64,_ child:Int64=0)->Usage {
+        Usage(source:source,session:session,agent:"same-name",project:"/fixture/project",model:model,ownTotal:total-child,subagentTotal:child,input:total-10,output:10,cacheRead:0,cacheWrite:0,total:total,latest:1000)
+    }
+    let usageRows=[usageFixture("Claude","one","model-a",100,20),usageFixture("Claude","two","model-a",200),usageFixture("Claude","one","model-b",50),usageFixture("Codex","one","model-a",300),usageFixture("OpenCode","three","unknown",25)]
+    store.data=Snapshot(compactions:[],activeSessions:[],rows:usageRows,activeChildren:[],subscriptions:[q(95)],notices:[],sources:[],indexing:false,updated:1000)
+    store.tab="Subscriptions"
+    precondition(store.groups.map(\.title)==["Claude","Codex","OpenCode"])
+    precondition(store.groups.map(\.total)==[350,300,25], "Group recorded rows once, including already-rolled-up children, never quota snapshots")
+    precondition(store.groups.reduce(Int64(0)){$0+$1.total}==usageRows.reduce(Int64(0)){$0+$1.total})
+    precondition(store.groups[0].rows.count==3 && !store.groups[0].active)
+    store.tab="Agents"
+    precondition(store.groups.count==4, "Same-name and cross-client sessions stay separate")
+    store.tab="Subscriptions";store.data=nil
+    precondition(store.groups.isEmpty, "Missing usage is not a zero subscription total")
+    print("PASS: subscription usage grouping preserves totals, child rollups and session identity")
     print("PASS: refresh settings validation, timer replacement and persistence")
 } else {
     let app=NSApplication.shared

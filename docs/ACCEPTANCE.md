@@ -109,3 +109,5 @@ with/without a prior status line. Native picker/setup interaction remains manual
   remain warnings. Verify header wrapping and neutral notice contrast visually.
 
 Subscription warning cards show each window’s reset countdown from the provider-reported reset timestamp, refreshed every 30 seconds. Expired windows leave the warning cards; reset times are never inferred from local token usage.
+
+- Usage → Group by → Subscriptions shows one card per recorded client, ranked by tokens, with input/output/cache metrics and expandable session/model/project details. Check all four picker labels at normal popup width. Totals match other groupings for Today/7/30 days; absent sources are not zero cards. Native fixtures cover source totals, child rollups, same-name sessions and empty data.
