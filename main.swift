@@ -594,6 +594,7 @@ struct Dashboard:View {
                     SubscriptionWarning(subscriptions:store.data?.subscriptions ?? [],thresholds:store.quotaThresholds)
                 }
             }.padding(20).background(LinearGradient(colors:[Color(red:0.19,green:0.22,blue:0.39),Color(red:0.16,green:0.19,blue:0.28)],startPoint:.topLeading,endPoint:.bottomTrailing))
+            if !information && !settings { PendingUpdateNotice().padding(.horizontal,14) }
             if settings {
                 TokenSettings(store:store) { settings=false }
             } else if information {
@@ -700,18 +701,20 @@ struct Dashboard:View {
     func notice(_ text:String)->some View { Text(text).font(.system(size:10)).foregroundStyle(Color(red:0.91,green:0.74,blue:0.48)).frame(maxWidth:.infinity,alignment:.leading).padding(10).background(Color.orange.opacity(0.07),in:RoundedRectangle(cornerRadius:8)) }
 }
 final class StatusBadgeView:NSView {
+    var updateAvailable=false {didSet {needsDisplay=true}}
     var level=0 {didSet {needsDisplay=true}}
     override func hitTest(_ point:NSPoint)->NSView? {nil}
     override func draw(_ dirtyRect:NSRect) {
-        NSColor(quotaColor(level)).setFill()
+        (updateAvailable ? NSColor.systemBlue : NSColor(quotaColor(level))).setFill()
         NSBezierPath(ovalIn:bounds).fill()
-        let text=NSAttributedString(string:"!",attributes:[.font:NSFont.systemFont(ofSize:10,weight:.heavy),.foregroundColor:NSColor.black])
+        let text=NSAttributedString(string:updateAvailable ? "↓" : "!",attributes:[.font:NSFont.systemFont(ofSize:10,weight:.heavy),.foregroundColor:updateAvailable ? NSColor.white : NSColor.black])
         text.draw(at:NSPoint(x:bounds.midX-text.size().width/2,y:bounds.midY-text.size().height/2))
     }
 }
 final class AppDelegate:NSObject,NSApplicationDelegate,NSPopoverDelegate {
     let store=Store();let popover=NSPopover();var item:NSStatusItem!;var global:Any?;var local:Any?
     let badge=StatusBadgeView(frame:.zero)
+    let updateBadge=StatusBadgeView(frame:.zero)
     var badgeTimer:Timer?
     func applicationDidFinishLaunching(_ n:Notification) {
         AppUpdates.shared.start { [weak self] in self?.store.loading == true }
@@ -737,6 +740,17 @@ final class AppDelegate:NSObject,NSApplicationDelegate,NSPopoverDelegate {
                 badge.bottomAnchor.constraint(equalTo:button.bottomAnchor,constant:1)
             ])
         }
+        if let button=item.button {
+            updateBadge.updateAvailable=true
+            updateBadge.translatesAutoresizingMaskIntoConstraints=false
+            updateBadge.setAccessibilityElement(false);button.addSubview(updateBadge)
+            NSLayoutConstraint.activate([
+                updateBadge.widthAnchor.constraint(equalToConstant:10),updateBadge.heightAnchor.constraint(equalToConstant:10),
+                updateBadge.leadingAnchor.constraint(equalTo:button.leadingAnchor,constant:-1),
+                updateBadge.topAnchor.constraint(equalTo:button.topAnchor,constant:1)
+            ])
+        }
+        AppUpdates.shared.onChange={ [weak self] in self?.updateStatusIcon() }
         popover.behavior = .transient;popover.appearance=NSAppearance(named:.darkAqua);popover.delegate=self
         popover.contentViewController=NSHostingController(rootView:Dashboard(store:store));popover.contentSize=NSSize(width:460,height:700)
         store.onUpdate={ [weak self] in self?.updateStatusIcon() }
@@ -747,11 +761,14 @@ final class AppDelegate:NSObject,NSApplicationDelegate,NSPopoverDelegate {
         if CommandLine.arguments.contains("--show"){DispatchQueue.main.asyncAfter(deadline:.now()+0.4){self.toggle()}}
     }
     func updateStatusIcon() {
+        guard item != nil else {return}
         let now=Date().timeIntervalSince1970
+        updateBadge.isHidden=AppUpdates.shared.pendingVersion == nil
         let subscriptions=store.data?.subscriptions ?? []
         let warnings=quotaWarnings(subscriptions,now:now,thresholds:store.quotaThresholds)
         badge.level=subscriptionWarningLevel(subscriptions,now:now,thresholds:store.quotaThresholds);badge.isHidden=badge.level==0
         var lines=["Token Monitor · "+compact(store.total)+" recorded tokens"]
+        if let title=AppUpdates.shared.pendingTitle {lines.append(title)}
         for quota in warnings {
             lines.append("\(quota.source) · \(quota.label) · \(Int(quota.used!))% used" + (now-(quota.observed ?? 0)>300 ? " · stale report" : ""))
         }
@@ -784,6 +801,17 @@ if CommandLine.arguments.contains("--updater-self-test") {
     AppUpdates.shared.start { false }
     precondition(AppUpdates.shared.failure == nil, "Sparkle configuration must start successfully")
     precondition(!AppUpdates.shared.checks && !AppUpdates.shared.downloads)
+    let updates = AppUpdates.shared
+    precondition(updates.supportsGentleScheduledUpdateReminders && updates.pendingTitle == nil)
+    updates.recordPending("2.0")
+    precondition(updates.pendingTitle == "Token Monitor 2.0 · update available")
+    updates.recordPending("2.0", onQuit: true); updates.recordPending("2.0")
+    precondition(updates.installsOnQuit && updates.pendingTitle!.contains("on quit"))
+    updates.recordPending("2.1")
+    precondition(!updates.installsOnQuit && updates.pendingVersion == "2.1")
+    updates.clearPending(); precondition(updates.pendingTitle == nil)
+    updates.testReminderCallbacks()
+    print("PASS: pending update reminders and install-on-quit state")
     print("PASS: embedded Sparkle starts with automatic checks and downloads disabled")
     exit(0)
 }
