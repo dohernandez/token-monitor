@@ -1,7 +1,7 @@
 # Documentation screenshots
 
 These PNGs render the current app’s SwiftUI views with illustrative data from
-`fixture.swift`. They are not captured from a live monitor or an account, and are
+`taskfiles/docs/scripts/fixture.swift`. They are not captured from a live monitor or an account, and are
 not evidence of real usage, disk capacity, provider limits, or model availability.
 
 From the project root on macOS with Command Line Tools installed:
