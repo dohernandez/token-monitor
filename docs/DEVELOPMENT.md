@@ -5,13 +5,13 @@
 Run from the project root, preserving the full build log:
 
 ```sh
-python3 -m unittest -v test_collector.py test_quotas.py test_privacy.py
-python3 -m unittest discover -s scripts -p 'test_*.py'
-sh build.sh > build.log 2>&1
-python3 scripts/check_app.py "build/Token Monitor.app"
-TEST_BUILD=1 sh build.sh > build-test.log 2>&1
-python3 scripts/check_app.py --test-build "build/test/Token Monitor.app"
-python3 -B scripts/check_updater.py "build/test/Token Monitor.app"
+task common:check
+task build:app > build.log 2>&1
+task build:check -- "build/Token Monitor.app"
+task build:app -- --test > build-test.log 2>&1
+task build:check -- --test-build "build/test/Token Monitor.app"
+task build:check:updater -- "build/test/Token Monitor.app"
+SPARKLE_TOOLS=build/sparkle task build:check:signatures
 ```
 
 Check each exit code; a later passing command does not make an earlier failed build
@@ -21,16 +21,16 @@ successful.
 
 Test launch modes never ship. `tests/TestModes.swift` holds `--self-test`,
 `--updater-self-test`, `--diagnostics` and `--show`, inside `#if TOKEN_MONITOR_TESTS`.
-Only `TEST_BUILD=1 sh build.sh` compiles that file with the flag, into `build/test/`
-unless `BUILD_DIR` is set. Release code that exists only for tests must stay inside
+Only `task build:app -- --test` (or `TEST_BUILD=1 sh build.sh`) compiles that file
+with the flag, into `build/test/` unless `--build-dir` or `BUILD_DIR` is set. Release code that exists only for tests must stay inside
 the same guard (for example `AppUpdates.testReminderCallbacks`).
 
-- `check_app.py <app>` rejects a release binary that contains any test-mode marker,
+- `task build:check -- <app>` (`scripts/check_app.py`) rejects a release binary that contains any test-mode marker,
   then runs the bundle and bundled-collector checks. Packaging runs it on the staged
   and mounted app.
-- `check_app.py --test-build <app>` requires the markers and runs `--self-test`:
+- `task build:check -- --test-build <app>` requires the markers and runs `--self-test`:
   native formatting, quota warning and timer/preference checks without normal UI launch.
-- `scripts/test_shipped_source.py` fails if `main.swift` or `Updates.swift` mention a
+- `scripts/test_shipped_source.py` (in `task common:test:release`) fails if `main.swift` or `Updates.swift` mention a
   test mode outside the guard.
 
 The test app has the same bundle identity as the release app. Launching it normally
@@ -40,6 +40,46 @@ modify system module maps. Build overwrites the app bundle in place unless
 `BUILD_DIR` selects an isolated directory. Building downloads a checksum-pinned
 Python runtime; the installed app uses that bundled interpreter. See
 [Releasing](RELEASING.md) for installer and branch-rule checks.
+
+## Tooling
+
+All project tooling runs through `Taskfile.yaml` (Darien, 2026-09-30). The root file
+only includes namespaces from `taskfiles/<ns>/Taskfile.yaml`:
+
+| Namespace | Tasks |
+|---|---|
+| `common` | `test` (`test:unit`, `test:release`), `lint`, `check`, `check:task-cli-args`, `check:commit-message`, `check:commit-signatures`, `precommit` |
+| `build` | `app` (`--test` for the test build), `check`, `check:updater`, `check:signatures` |
+| `release` | `version`, `version:branch`, `archive`, `unpack`, `package`, `tools`, `sign`, `publish`, `rules` |
+| `docs` | `screenshots` |
+| `provision` | `setup-dev`, `install-ruff`, `install-precommit`, `configure-precommit`, `install-task` |
+| `local` | optional, gitignored personal tasks (`taskfiles/local/Taskfile.yaml`) |
+
+Rules:
+
+- Names are `namespace:group:action`. A mode is a flag, not a task name
+  (`task build:app -- --test`). Every task that reaches a flag parser ends with
+  `{{.CLI_ARGS}}`, so `task <name> -- --flag` always arrives; `task
+  common:check:task-cli-args` enforces it. Scripts refuse unknown flags.
+- New task scripts live in `taskfiles/<ns>/scripts/`. Older helpers still live in
+  `scripts/` until they move.
+- GitHub workflows call tasks, not scripts. The only direct script call is the Task
+  bootstrap, `taskfiles/provision/scripts/install_task.py`, which checks the pinned
+  SHA-256 in `taskfiles/provision/task.json` before installing Task. A third-party
+  installer action is not used, because the release job runs Task with the
+  update-signing key in its environment.
+- Lint is correctness-only ruff (`ruff.toml`); formatting is not enforced.
+
+Set up once with `task provision:setup-dev`. It installs:
+
+- pinned ruff, into the gitignored `.tools/`;
+- pinned pre-commit 4.1.0, with pipx;
+- the git hooks.
+
+On commit, the hooks run lint, the CLI_ARGS check and `task common:test`. The
+commit-msg hook requires a conventional commit subject and rejects AI attribution.
+Commit and let the hooks run once; `task common:precommit` runs them on demand.
+Commits pushed to GitHub must still carry verified signatures ([branch rules](RELEASING.md#branch-rules)).
 
 ## Safe replacement and rollback
 

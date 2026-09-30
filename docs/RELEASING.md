@@ -29,7 +29,8 @@ Apple’s guidance: [Open a Mac app from an unknown developer](https://support.a
 merges), and manual dispatch. Closing a PR without merging never publishes a release.
 Manual dispatch publishes only when run from `main`.
 
-Every PR runs:
+Every job installs Task 3 from the checksum pin in `taskfiles/provision/task.json`,
+then calls tasks only (see [Tooling](DEVELOPMENT.md#tooling)). Every PR runs:
 
 - **Commit signatures:** every new PR commit must be verified by GitHub.
 - **Test and build (arm64):** native macOS 15 release and test builds, release helper
@@ -88,8 +89,8 @@ into both the bundle metadata and visible header.
 To build a local installer (use a new output folder if the name already exists):
 
 ```sh
-BUILD_DIR=/tmp/monitor-release-build sh build.sh
-python3 scripts/package.py --app '/tmp/monitor-release-build/Token Monitor.app' --version 1.0.0 --output dist
+task build:app -- --build-dir /tmp/monitor-release-build
+task release:package -- --app '/tmp/monitor-release-build/Token Monitor.app' --version 1.0.0 --output dist
 ```
 
 The package helper makes a copy before changing metadata. It never installs the app
@@ -110,7 +111,7 @@ The intended rules live in `.github/main-ruleset.json`:
 **Activation verified (2026-09-22): active.** This repository is public. GitHub
 Free enforces the rules above; secret scanning and push protection are also enabled.
 The server configuration was read back separately from the committed ruleset file.
-Use `scripts/apply_main_rules.py --validated-ref <branch>` only after the required
+Use `task release:rules -- --validated-ref <branch>` only after the required
 checks pass when deliberately updating the rules.
 
 The helper checks the actual check names, integration and successful conclusions,
@@ -194,7 +195,7 @@ and changed downloads, changed/unsigned feeds, and wrong keys fail.
 For local signature regression checks after a build:
 
 ```sh
-SPARKLE_TOOLS=build/sparkle python3 -B scripts/test_signatures.py
+SPARKLE_TOOLS=build/sparkle task build:check:signatures
 ```
 
 `scripts/check_updater.py` starts the embedded updater of a `TEST_BUILD=1` app in a temporary identity,
