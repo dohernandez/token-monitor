@@ -73,20 +73,36 @@ tasks:
       - python3 ./taskfiles/common/scripts/check_task_cli_args.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
-  check:commit-message:
+  check:commit-msg:
     desc: Check a commit message (conventional commit, no AI attribution); the commit-msg hook runs it
     summary: |
       Usage:
-        task common:check:commit-message -- .git/COMMIT_EDITMSG
+        task common:check:commit-msg -- .git/COMMIT_EDITMSG
+        task common:check:commit-msg -- --attribution-only pr-description.md
     cmds:
       - python3 ./taskfiles/common/scripts/check_commit_message.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
-  check:commit-signatures:
-    desc: Require GitHub-verified signatures on every new commit (CI policy job; needs gh and GH_TOKEN)
+  check:branch-name:
+    desc: Check that a branch name is <type>/<slug>; its prefix sets the release (chore/ci/docs/test do not release)
     summary: |
+      Without --branch, checks the current git branch (main and detached HEAD are skipped).
+
       Usage:
-        task common:check:commit-signatures -- --repo dohernandez/token-monitor --sha <sha> --pr <number>
+        task common:check:branch-name
+        task common:check:branch-name -- --branch feat/quota-alerts
+        task common:check:branch-name -- --branch chore/x --repo dohernandez/token-monitor --pr 17
     cmds:
-      - python3 ./taskfiles/common/scripts/check_commit_signatures.py {{.CLI_ARGS}}
+      - python3 ./taskfiles/common/scripts/check_branch_name.py {{.CLI_ARGS}}
+    dir: "{{.ROOT_DIR}}"
+
+  check:pr-messages:
+    desc: Run check:commit-msg on every new PR commit and the PR description (CI "Commit messages" check; needs gh and GH_TOKEN)
+    summary: |
+      API-made commits skip local git hooks, so CI repeats the commit-msg check.
+
+      Usage:
+        task common:check:pr-messages -- --repo dohernandez/token-monitor --sha <sha> --pr <number>
+    cmds:
+      - python3 ./taskfiles/common/scripts/check_pr_messages.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
