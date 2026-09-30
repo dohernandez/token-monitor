@@ -32,7 +32,9 @@ Manual dispatch publishes only when run from `main`.
 Every job installs Task 3 from the checksum pin in `taskfiles/provision/task.json`,
 then calls tasks only (see [Tooling](DEVELOPMENT.md#tooling)). Every PR runs:
 
-- **Commit signatures:** every new PR commit must be verified by GitHub.
+- **Commit signatures:** every new PR commit must be verified by GitHub, and every new
+  commit message and the PR description must be free of AI attribution. A description
+  edit alone does not rerun the check; push or rerun the job after editing.
 - **Test and build (arm64):** native macOS 15 release and test builds, release helper
   tests, native self-tests and updater startup (test build only), a check that the
   release binary has no test launch modes, signature integrity, DMG

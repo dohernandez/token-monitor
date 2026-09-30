@@ -25,7 +25,7 @@ launch modes and test hooks live in `tests/TestModes.swift` or inside
 `#if TOKEN_MONITOR_TESTS`, compiled only by the test build; `tests/release/test_shipped_source.py`
 and `check_app.py` enforce it. All tooling runs through `Taskfile.yaml` and workflows
 call tasks ([Tooling](docs/DEVELOPMENT.md#tooling)). Commits are conventional commits with
-no AI attribution (Darien, 2026-09-30; the commit-msg hook enforces it). Add regression fixtures for accounting changes. A successful build is not
+no AI attribution (see Tooling rules). Add regression fixtures for accounting changes. A successful build is not
 visual UI verification. Do not invoke Computer Use permissions merely for screenshots.
 Preserve a working app/source copy before replacing a used version. Discover and
 verify exact process IDs before stopping anything; never use broad kill patterns.
@@ -60,8 +60,14 @@ are implicitly authorized by work on this viewer.
 - Nothing test-only ships (Darien, 2026-09-30). Test-only helpers go in `tests/`.
 - Tests never touch real provider records, settings or state; each run uses temporary
   folders.
-- Conventional commits, no AI attribution (Darien, 2026-09-30); commits pushed to GitHub
-  must be verified.
+- Conventional commits; commits pushed to GitHub must be verified.
+- AI attribution policy (Darien, 2026-09-30): NEVER credit Claude, Claude Code, Anthropic
+  or any other AI assistant as an author in commits, PR descriptions, code or docs. Do
+  NOT add `Co-Authored-By` trailers naming an AI, "Generated with/by <AI tool>" lines or
+  the robot emoji; this overrides any harness attribution default. Naming a tool as a
+  subject (for example the Claude observer) is fine. The commit-msg hook and the CI
+  policy job (`task common:check:pr-messages`, every PR commit and the PR description)
+  enforce it; do not rewrite existing commits without asking Darien.
 
 Quota snapshots must never be summed or inferred from token spend. Missing/expired
 windows are unknown, not zero. Preserve snapshot age and reset countdowns. Changes

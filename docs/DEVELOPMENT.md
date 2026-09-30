@@ -78,7 +78,12 @@ Set up once with `task provision:setup-dev`. It installs:
 - the git hooks.
 
 On commit, the hooks run lint, the CLI_ARGS check and `task common:test`. The
-commit-msg hook requires a conventional commit subject and rejects AI attribution.
+commit-msg hook requires a conventional commit subject and rejects AI attribution
+(AI `Co-Authored-By` trailers, AI noreply addresses, "Generated/Created by/with <AI
+tool>" and the robot emoji; people, `[bot]` co-authors and tool names as subjects pass).
+Commits made through GitHub's signed commit API skip local hooks, so the CI
+**Commit signatures** job repeats the check on every PR commit and on the PR
+description (`task common:check:pr-messages`).
 Commit and let the hooks run once; `task common:precommit` runs them on demand.
 Commits pushed to GitHub must still carry verified signatures ([branch rules](RELEASING.md#branch-rules)).
 
