@@ -42,19 +42,24 @@ Download the DMG for your Mac from [Releases](https://github.com/dohernandez/tok
 
 ### Build from source
 
-Building requires macOS 15+, Apple Command Line Tools, and Python 3.9+. Downloaded apps include their own Python runtime.
+Building requires macOS 15+, Apple Command Line Tools, Python 3.9+ and [Task](https://taskfile.dev) 3.
+Downloaded apps include their own Python runtime.
 The build downloads a checksum-pinned Python runtime. No third-party Python packages, API keys, or model calls are needed at runtime.
 
 ```sh
 git clone https://github.com/dohernandez/token-monitor.git
 cd token-monitor
-python3 -m unittest -v test_collector.py test_quotas.py test_privacy.py
-sh build.sh
-python3 scripts/check_app.py "build/Token Monitor.app"
-TEST_BUILD=1 sh build.sh
-python3 scripts/check_app.py --test-build "build/test/Token Monitor.app"
+task common:test
+task build:app
+task build:check -- "build/Token Monitor.app"
+task build:app -- --test
+task build:check -- --test-build "build/test/Token Monitor.app"
 open "build/Token Monitor.app"
 ```
+
+All project tooling runs through `Taskfile.yaml`; `task --list` shows every task and
+`task --summary <task>` its options. Contributors run `task provision:setup-dev` once
+for the pinned lint tool and git hooks ([development guide](docs/DEVELOPMENT.md#tooling)).
 
 The app lives in `build/Token Monitor.app`. Native self-tests run only in the separate
 test build (`build/test/`); the release app has no test launch options. Run each

@@ -1,8 +1,8 @@
 """Start Sparkle in a disposable identity of a TEST_BUILD=1 app, without checks, windows or installation."""
+import argparse
 import plistlib
 import shutil
 import subprocess
-import sys
 import tempfile
 import uuid
 from pathlib import Path
@@ -25,4 +25,7 @@ def check(app):
         finally:
             subprocess.run(['defaults','delete',identity],capture_output=True)
 
-if __name__=='__main__':check(sys.argv[1])
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description='Start the embedded updater of a TEST_BUILD=1 app in a disposable identity.')
+    parser.add_argument('app')
+    check(parser.parse_args().app)

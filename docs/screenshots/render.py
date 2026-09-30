@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Render current SwiftUI views with example data; no live app or screen capture."""
+import argparse
 import json
 import os
 import subprocess
 import tempfile
 from pathlib import Path
 
+argparse.ArgumentParser(description='Render README screenshots from example data (task docs:screenshots). Reads SPARKLE_TOOLS.').parse_args()
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT.name
 source = (ROOT / "main.swift").read_text()

@@ -1,11 +1,31 @@
 #!/bin/sh
+# Build Token Monitor.app (task build:app).
+#
+# Usage: sh build.sh [--test] [--build-dir DIR] [--expect-arch arm64|x86_64]
+#   --test         Compile the native test launch modes (tests/TestModes.swift) into
+#                  build/test; release builds never contain them. Same as TEST_BUILD=1.
+#   --build-dir    Output folder (default build, or build/test with --test). Same as BUILD_DIR.
+#                  Relative paths resolve from the repository root.
+#   --expect-arch  Fail unless this Mac's architecture matches (CI matrix guard).
+# Env: APP_VERSION (default VERSION), APP_BUILD (default 1), BUILD_DIR, TEST_BUILD.
 set -eu
 cd "$(dirname "$0")"
-# TEST_BUILD=1 compiles the native test launch modes (tests/TestModes.swift);
-# release builds never contain them.
-case "${TEST_BUILD:-0}" in
-  0) build_dir="${BUILD_DIR:-$PWD/build}"; set -- ;;
-  1) build_dir="${BUILD_DIR:-$PWD/build/test}"; set -- -D TOKEN_MONITOR_TESTS tests/TestModes.swift ;;
+test_build="${TEST_BUILD:-0}"
+build_dir="${BUILD_DIR:-}"
+expect_arch=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --test) test_build=1 ;;
+    --build-dir) [ "$#" -ge 2 ] || { echo "--build-dir needs a folder" >&2; exit 2; }; build_dir="$2"; shift ;;
+    --expect-arch) [ "$#" -ge 2 ] || { echo "--expect-arch needs arm64 or x86_64" >&2; exit 2; }; expect_arch="$2"; shift ;;
+    -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+    *) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
+  esac
+  shift
+done
+case "$test_build" in
+  0) build_dir="${build_dir:-$PWD/build}"; set -- ;;
+  1) build_dir="${build_dir:-$PWD/build/test}"; set -- -D TOKEN_MONITOR_TESTS tests/TestModes.swift ;;
   *) echo "TEST_BUILD must be 0 or 1" >&2; exit 1 ;;
 esac
 mkdir -p "$build_dir"
@@ -14,6 +34,7 @@ app="$build_dir/Token Monitor.app"
 version="${APP_VERSION:-$(cat VERSION)}"
 architecture="$(uname -m)"
 case "$architecture" in arm64|x86_64) ;; *) echo "Unsupported architecture: $architecture" >&2; exit 1 ;; esac
+if [ -n "$expect_arch" ] && [ "$expect_arch" != "$architecture" ]; then echo "Expected $expect_arch, running on $architecture" >&2; exit 1; fi
 mkdir -p "$app/Contents/MacOS"
 python3 scripts/bundle_info.py "$app" "$version" "${APP_BUILD:-1}"
 python3 - "$build_dir" <<'PYBUILD'

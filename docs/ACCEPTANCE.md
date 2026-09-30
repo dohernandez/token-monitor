@@ -47,7 +47,7 @@ provider logs to manufacture a fixture.
 
 ## Updates and privacy
 
-- Run `SPARKLE_TOOLS=<build-dir>/sparkle python3 -B scripts/test_signatures.py`.
+- Run `SPARKLE_TOOLS=<build-dir>/sparkle task build:check:signatures`.
   Valid signed fixtures pass; changed installers, unsigned/changed feeds and wrong
   keys must fail. PR CI repeats this with temporary keys on both architectures.
 - Verify cache migration preserves data, sets owner-only modes and rejects links.

@@ -7,7 +7,7 @@ not evidence of real usage, disk capacity, provider limits, or model availabilit
 From the project root on macOS with Command Line Tools installed:
 
 ```sh
-python3 docs/screenshots/render.py
+task docs:screenshots
 ```
 
 The script creates a temporary source copy and executable, selects the documented
