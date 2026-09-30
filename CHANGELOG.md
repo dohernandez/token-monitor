@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Move scripts into `taskfiles/<ns>/scripts/` and tests into `tests/unit/` and `tests/release/`.
 - Run all project tooling through `Taskfile.yaml` namespaces; CI installs a checksum-pinned Task and calls tasks only. Add pre-commit hooks for lint, task CLI arguments, fast tests and conventional commit messages.
 - Keep native test launch modes (`--self-test`, `--updater-self-test`, `--diagnostics`, `--show`) out of release builds; they compile only with `TEST_BUILD=1`.
 - Add signed Sparkle updates, manual checking and optional automatic updates.

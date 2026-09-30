@@ -4,7 +4,7 @@ tasks:
   version:
     desc: Reserve or reuse the semantic tag of HEAD on main (reads RELEASE_BRANCH; writes GITHUB_OUTPUT)
     cmds:
-      - python3 scripts/release_version.py {{.CLI_ARGS}}
+      - python3 ./taskfiles/release/scripts/release_version.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
   version:branch:
@@ -42,7 +42,7 @@ tasks:
       Usage:
         task release:package -- --app "build/Token Monitor.app" --version 1.0.0 --output dist
     cmds:
-      - python3 scripts/package.py {{.CLI_ARGS}}
+      - python3 ./taskfiles/release/scripts/package.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
   tools:
@@ -61,13 +61,13 @@ tasks:
       Usage:
         task release:sign -- --image dist/<name>.dmg --version <v> --build <n> --arch arm64 --tools /tmp/signing/sparkle
     cmds:
-      - python3 scripts/sign_release.py {{.CLI_ARGS}}
+      - python3 ./taskfiles/release/scripts/sign_release.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
   publish:
     desc: Verify both installer sets against the committed public key, then publish (RELEASE_TAG, UPDATE_VERIFIER)
     cmds:
-      - python3 scripts/publish_release.py {{.CLI_ARGS}}
+      - python3 ./taskfiles/release/scripts/publish_release.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
   rules:
@@ -76,5 +76,5 @@ tasks:
       Usage:
         task release:rules -- --validated-ref <branch>
     cmds:
-      - python3 scripts/apply_main_rules.py {{.CLI_ARGS}}
+      - python3 ./taskfiles/release/scripts/apply_main_rules.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"

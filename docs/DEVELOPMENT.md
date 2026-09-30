@@ -21,16 +21,16 @@ successful.
 
 Test launch modes never ship. `tests/TestModes.swift` holds `--self-test`,
 `--updater-self-test`, `--diagnostics` and `--show`, inside `#if TOKEN_MONITOR_TESTS`.
-Only `task build:app -- --test` (or `TEST_BUILD=1 sh build.sh`) compiles that file
+Only `task build:app -- --test` (or `TEST_BUILD=1` in the environment) compiles that file
 with the flag, into `build/test/` unless `--build-dir` or `BUILD_DIR` is set. Release code that exists only for tests must stay inside
 the same guard (for example `AppUpdates.testReminderCallbacks`).
 
-- `task build:check -- <app>` (`scripts/check_app.py`) rejects a release binary that contains any test-mode marker,
+- `task build:check -- <app>` (`taskfiles/build/scripts/check_app.py`) rejects a release binary that contains any test-mode marker,
   then runs the bundle and bundled-collector checks. Packaging runs it on the staged
   and mounted app.
 - `task build:check -- --test-build <app>` requires the markers and runs `--self-test`:
   native formatting, quota warning and timer/preference checks without normal UI launch.
-- `scripts/test_shipped_source.py` (in `task common:test:release`) fails if `main.swift` or `Updates.swift` mention a
+- `tests/release/test_shipped_source.py` (in `task common:test:release`) fails if `main.swift` or `Updates.swift` mention a
   test mode outside the guard.
 
 The test app has the same bundle identity as the release app. Launching it normally
@@ -61,8 +61,9 @@ Rules:
   (`task build:app -- --test`). Every task that reaches a flag parser ends with
   `{{.CLI_ARGS}}`, so `task <name> -- --flag` always arrives; `task
   common:check:task-cli-args` enforces it. Scripts refuse unknown flags.
-- New task scripts live in `taskfiles/<ns>/scripts/`. Older helpers still live in
-  `scripts/` until they move.
+- Scripts live next to their namespace in `taskfiles/<ns>/scripts/`. Tests live in
+  `tests/unit/` (accounting fixtures) and `tests/release/` (release helpers); both run
+  with the repository root as the working directory.
 - GitHub workflows call tasks, not scripts. The only direct script call is the Task
   bootstrap, `taskfiles/provision/scripts/install_task.py`, which checks the pinned
   SHA-256 in `taskfiles/provision/task.json` before installing Task. A third-party
@@ -83,7 +84,7 @@ Commits pushed to GitHub must still carry verified signatures ([branch rules](RE
 
 ## Safe replacement and rollback
 
-1. Copy current main.swift, collector/quotas/observer Python files, build.sh, docs
+1. Copy current main.swift, collector/quotas/observer Python files, `taskfiles/`, docs
    and the working app bundle to a private temporary backup outside build/.
 2. Before schema or accounting migration, stop the app and back up its private SQLite
    database using SQLite's backup API (not a live copy of only the main DB file).

@@ -9,5 +9,5 @@ tasks:
       Usage:
         task docs:screenshots
     cmds:
-      - python3 docs/screenshots/render.py {{.CLI_ARGS}}
+      - python3 ./taskfiles/docs/scripts/render.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"

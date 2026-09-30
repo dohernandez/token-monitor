@@ -5,7 +5,9 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'build/scripts'))
 from bundle_info import APP_NAME
 from verify_release import verify_assets
 
@@ -15,7 +17,7 @@ def publish():
     version = tag.removeprefix('v')
     dist = Path('dist')
     assets = []
-    config=json.loads(Path(__file__).with_name('update-config.json').read_text())
+    config=json.loads(Path(__file__).resolve().parents[2].joinpath('build/scripts/update-config.json').read_text())
     verifier=os.environ.get('UPDATE_VERIFIER','build/key_public')
     for arch in ('arm64', 'x86_64'):
         image = dist / (APP_NAME.replace(' ', '-') + '-' + version + '-macOS-' + arch + '.dmg')

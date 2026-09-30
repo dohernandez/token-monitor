@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 
 argparse.ArgumentParser(description='Render README screenshots from example data (task docs:screenshots). Reads SPARKLE_TOOLS.').parse_args()
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 APP = ROOT.name
 source = (ROOT / "main.swift").read_text()
 marker = '// MARK: - Entry point'
@@ -30,7 +30,7 @@ else:
 sparkle = Path(os.environ.get('SPARKLE_TOOLS', str(ROOT / 'build/sparkle'))).resolve()
 assert (sparkle / 'Sparkle.framework').is_dir(), 'Build first or set SPARKLE_TOOLS to a built Sparkle directory'
 source = source.replace('@State private var settings=false', '@State private var settings=CommandLine.arguments.contains("settings")')
-source += (ROOT / "docs/screenshots/fixture.swift").read_text()
+source += Path(__file__).with_name("fixture.swift").read_text()
 with tempfile.TemporaryDirectory(prefix=APP + "-readme-") as directory:
     temporary = Path(directory)
     (temporary / "main.swift").write_text(source)
