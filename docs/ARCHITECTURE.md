@@ -14,8 +14,9 @@ Read [Usage and data](USAGE.md) for the full user-facing data contracts and [age
 | quotas.py | Provider quota normalization and raw-event window sums |
 | claude_statusline.py | Whitelisted quota observation and exact forwarding to the original footer |
 | install_claude_observer.py | Explicit observer installation, backup and concurrent-change guard |
-| test_collector.py, test_quotas.py | Temporary-source accounting and observer regression tests |
-| build.sh | Swift compilation, Python resource bundling and ad-hoc signing |
+| tests/unit/ | Temporary-source accounting, observer and privacy regression tests |
+| tests/TestModes.swift | Native self-tests and launch diagnostics; compiled only into test builds |
+| taskfiles/build/scripts/build.sh | Swift compilation, Python resource bundling and ad-hoc signing (`task build:app`) |
 
 ## Persistence and identity
 
@@ -85,7 +86,7 @@ automatic cleanup, launch-at-login, or guaranteed complete 30-day history.
 The collector uses `Contents/Resources/python/bin/python3` with `-B -E -s`, ignoring
 Python environment variables and user site packages while retaining its bundled
 sibling modules. The runtime is downloaded only at build time from the exact
-release and SHA-256 in `scripts/python-runtime.json`; its license files are retained.
+release and SHA-256 in `taskfiles/build/scripts/python-runtime.json`; its license files are retained.
 Only opt-in/manual Sparkle update checks make network requests. Bundle IDs and user data locations stay unchanged.
 See [Releasing](RELEASING.md) for CI and optional observer setup.
 

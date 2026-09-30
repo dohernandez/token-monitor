@@ -19,7 +19,7 @@ tasks:
     vars:
       PYTHON: '{{.PYTHON | default "python3"}}'
     cmds:
-      - '"{{.PYTHON}}" -B -E -s -m unittest test_collector.py test_quotas.py test_privacy.py {{.CLI_ARGS}}'
+      - '"{{.PYTHON}}" -B -E -s -m unittest discover -s tests/unit -t . {{.CLI_ARGS}}'
     dir: "{{.ROOT_DIR}}"
 
   test:release:
@@ -29,7 +29,7 @@ tasks:
         task common:test:release
         task common:test:release -- -v
     cmds:
-      - python3 -m unittest discover -s scripts -p 'test_*.py' {{.CLI_ARGS}}
+      - python3 -m unittest discover -s tests/release -t . {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
   lint:

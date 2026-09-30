@@ -3,7 +3,7 @@ import re
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SHIPPED = ('main.swift', 'Updates.swift')
 TEST_GUARD = '#if TOKEN_MONITOR_TESTS'
 BANNED = ('CommandLine.arguments', 'self-test', '--diagnostics', '--show', 'launchDiagnostic',
@@ -40,7 +40,7 @@ class ShippedSourceTests(unittest.TestCase):
         modes = (ROOT / 'tests/TestModes.swift').read_text()
         unguarded = [line for line in release_source(modes).splitlines() if line.strip() and not line.startswith('//')]
         self.assertEqual(unguarded, [])
-        build = (ROOT / 'build.sh').read_text()
+        build = (ROOT / 'taskfiles/build/scripts/build.sh').read_text()
         self.assertIn('1) build_dir="${build_dir:-$PWD/build/test}"; set -- -D TOKEN_MONITOR_TESTS tests/TestModes.swift', build)
         self.assertEqual(build.count('TOKEN_MONITOR_TESTS'), 1)
 

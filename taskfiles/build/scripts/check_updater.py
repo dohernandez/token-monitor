@@ -10,7 +10,7 @@ from check_app import TEST_MODE_MARKERS, test_markers
 
 def check(app):
     app=Path(app)
-    assert len(test_markers(app))==len(TEST_MODE_MARKERS),'Needs a TEST_BUILD=1 app; release builds have no --updater-self-test'
+    assert len(test_markers(app))==len(TEST_MODE_MARKERS),'Needs a test build (task build:app -- --test); release builds have no --updater-self-test'
     with tempfile.TemporaryDirectory(prefix='monitor-updater-test-') as directory:
         fixture=Path(directory)/'Fixture.app';contents=fixture/'Contents';contents.mkdir(parents=True)
         shutil.copytree(app/'Contents/MacOS',contents/'MacOS')

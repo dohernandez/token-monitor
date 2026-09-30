@@ -82,7 +82,7 @@ fixed. Do not delete the tag just to reclaim a version. Published releases are n
 overwritten by reruns. Incomplete drafts may have their assets replaced before publishing.
 
 `APP_VERSION`, `APP_BUILD` and `BUILD_DIR` support isolated builds. Without overrides,
-`sh build.sh` uses `VERSION`, build number 1, and `build/`. Keep source-build and
+`task build:app` uses `VERSION`, build number 1, and `build/`. Keep source-build and
 release-package versioning distinct: release packaging stamps the reserved version
 into both the bundle metadata and visible header.
 
@@ -149,7 +149,7 @@ If an earlier observer installation exists with a different interpreter, follow
 Removing the app also requires restoring the saved original footer first.
 No real observer settings are changed by CI or by dragging the app into Applications.
 
-The runtime is pinned in `scripts/python-runtime.json`. Preserve license files,
+The runtime is pinned in `taskfiles/build/scripts/python-runtime.json`. Preserve license files,
 verify archive checksums, and test both architectures when updating it. The runtime
 archive is fetched at build time; the installed app does not download Python.
 
@@ -163,7 +163,7 @@ for the app's active scan/collector to finish. No login item is added.
 
 The first release containing this feature requires one manual installation: version
 1.0.0 does not contain an updater. Subsequent releases use Sparkle 2.10.0, pinned by
-URL and SHA-256 in `scripts/sparkle.py`. Framework licenses remain inside the bundle.
+URL and SHA-256 in `taskfiles/build/scripts/sparkle.py`. Framework licenses remain inside the bundle.
 The installer **and the appcast** are Ed25519-signed. `SUPublicEDKey` is embedded in
 the app; `SURequireSignedFeed` and `SUVerifyUpdateBeforeExtraction` require verification
 before trusting feed content or extracting an update. SHA-256 sidecars alone do not
@@ -177,7 +177,7 @@ profile. Profiling is disabled and the delegate's profile allowlist is empty.
 
 ### Key custody and CI
 
-`scripts/update-config.json` contains only the repository and public key. Each app
+`taskfiles/build/scripts/update-config.json` contains only the repository and public key. Each app
 has a separate seed, stored locally in the login Keychain under Sparkle's account
 `dohernandez.token-monitor`. An exported copy is installed as the `release` environment
 secret, never a repository file or PR secret. Exported temporary files are owner-only
@@ -198,7 +198,7 @@ For local signature regression checks after a build:
 SPARKLE_TOOLS=build/sparkle task build:check:signatures
 ```
 
-`scripts/check_updater.py` starts the embedded updater of a `TEST_BUILD=1` app in a temporary identity,
+`task build:check:updater` starts the embedded updater of a test build in a temporary identity,
 with automatic options disabled and no update UI. No test replaces or launches an installed app. Full interactive update/relaunch and
 Gatekeeper acceptance on a clean Mac remain manual acceptance checks. Verify these
 before claiming end-to-end installation acceptance. An older signed feed can be

@@ -13,14 +13,14 @@ class QuotaTests(unittest.TestCase):
         import install_claude_observer as installer
         import subprocess,os
         home=self.state/'fresh-home';(home/'.claude').mkdir(parents=True)
-        command=installer.install(home,Path(__file__).parent)
+        command=installer.install(home,Path(__file__).resolve().parents[2])
         settings=json.loads((home/'.claude/settings.json').read_text())
         self.assertEqual(settings['statusLine']['command'],command)
         self.assertIsNone(json.loads((home/'Library/Application Support/TokenMonitor/statusline-original.json').read_text()))
         raw=b'{"session_id":"test","rate_limits":{"five_hour":{"used_percentage":12,"resets_at":2000000000}}}'
         result=subprocess.run(['/bin/sh','-c',command],input=raw,capture_output=True,env=dict(os.environ,HOME=str(home)))
         self.assertEqual(result.returncode,0);self.assertEqual(result.stdout,b'')
-        installer.install(home,Path(__file__).parent)
+        installer.install(home,Path(__file__).resolve().parents[2])
         self.assertTrue(list((home/'Library/Application Support/TokenMonitor/claude-limits').glob('*.json')))
     def test_latest_snapshot_not_summed(self):
         quotas.put_codex(self.db,self.event(self.now,14));quotas.put_codex(self.db,self.event(self.now-100,90));quotas.put_codex(self.db,self.event(self.now,14))
@@ -69,10 +69,10 @@ class QuotaTests(unittest.TestCase):
         old=dict(statusLine=dict(type='command',command='/bin/cat'),untouched=True)
         settings.write_text(json.dumps(old))
         interpreter=self.state/'Python Runtime'/'python3';interpreter.parent.mkdir();interpreter.symlink_to(sys.executable)
-        command=installer.install(home,Path(__file__).parent,str(interpreter))
+        command=installer.install(home,Path(__file__).resolve().parents[2],str(interpreter))
         self.assertEqual(shlex.split(command)[0],str(interpreter))
         self.assertTrue(json.loads(settings.read_text())['untouched'])
-        installer.install(home,Path(__file__).parent,str(interpreter))
+        installer.install(home,Path(__file__).resolve().parents[2],str(interpreter))
         self.assertEqual(json.loads((home/'Library/Application Support/TokenMonitor/statusline-original.json').read_text()),old['statusLine'])
 
     def test_installer_and_footer_forwarding(self):
@@ -81,14 +81,14 @@ class QuotaTests(unittest.TestCase):
         settings=home/'.claude/settings.json'
         old=dict(statusLine=dict(type='command',command='/bin/cat; exit 7',padding=1),unrelated=dict(enabled=True))
         settings.write_text(json.dumps(old))
-        command=installer.install(home,Path(__file__).parent)
+        command=installer.install(home,Path(__file__).resolve().parents[2])
         config=json.loads(settings.read_text())
         self.assertEqual(config['unrelated'],old['unrelated']);self.assertEqual(config['statusLine']['padding'],1)
         raw=b'{"session_id":"test","rate_limits":{"five_hour":{"used_percentage":12,"resets_at":2000000000}}}'
         result=subprocess.run(['/bin/sh','-c',command],input=raw,capture_output=True,env=dict(os.environ,HOME=str(home)))
         self.assertEqual(result.stdout,raw);self.assertEqual(result.returncode,7)
         self.assertTrue(list((home/'Library/Application Support/TokenMonitor/claude-limits').glob('*.json')))
-        installer.install(home,Path(__file__).parent) # Reinstallation does not chain itself.
+        installer.install(home,Path(__file__).resolve().parents[2]) # Reinstallation does not chain itself.
         original=json.loads((home/'Library/Application Support/TokenMonitor/statusline-original.json').read_text())
         self.assertEqual(original,old['statusLine'])
 if __name__=='__main__':unittest.main()

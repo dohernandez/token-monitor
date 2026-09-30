@@ -20,7 +20,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT / 'scripts'))
+sys.path.insert(0, str(ROOT / 'taskfiles/build/scripts'))
 import sparkle  # noqa: E402
 
 
@@ -38,7 +38,7 @@ def compile_verifier(output):
         overlay.write_text(json.dumps({'version': 0, 'roots': roots}))
         subprocess.run(['xcrun', 'swiftc', '-vfsoverlay', str(overlay), '-Xcc', '-ivfsoverlay', '-Xcc', str(overlay),
                         '-module-cache-path', str(temporary / 'modules'),
-                        str(ROOT / 'scripts/key_public.swift'), '-o', str(output)], check=True)
+                        str(ROOT / 'taskfiles/build/scripts/key_public.swift'), '-o', str(output)], check=True)
     return output
 
 

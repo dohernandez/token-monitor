@@ -11,7 +11,7 @@ tasks:
         task build:app -- --test
         task build:app -- --build-dir /tmp/token-release --expect-arch arm64
     cmds:
-      - sh build.sh {{.CLI_ARGS}}
+      - sh taskfiles/build/scripts/build.sh {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
   check:
@@ -21,7 +21,7 @@ tasks:
         task build:check -- "build/Token Monitor.app"
         task build:check -- --test-build "build/test/Token Monitor.app"
     cmds:
-      - python3 scripts/check_app.py {{.CLI_ARGS}}
+      - python3 ./taskfiles/build/scripts/check_app.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
   check:updater:
@@ -30,7 +30,7 @@ tasks:
       Usage:
         task build:check:updater -- "build/test/Token Monitor.app"
     cmds:
-      - python3 -B scripts/check_updater.py {{.CLI_ARGS}}
+      - python3 -B ./taskfiles/build/scripts/check_updater.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
   check:signatures:
@@ -40,5 +40,5 @@ tasks:
         SPARKLE_TOOLS=build/sparkle task build:check:signatures
         SPARKLE_TOOLS=build/sparkle task build:check:signatures -- -v
     cmds:
-      - python3 -B scripts/test_signatures.py {{.CLI_ARGS}}
+      - python3 -B tests/release/test_signatures.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
