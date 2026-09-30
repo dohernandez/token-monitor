@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Publish only complete installer sets; published releases remain immutable."""
+import argparse
 import hashlib
 import json
 import os
@@ -49,4 +50,5 @@ def publish():
     subprocess.run(['gh','release','view',tag,'--json','url','--jq','.url'],check=True)
 
 if __name__=='__main__':
+    argparse.ArgumentParser(description='Verify and publish dist/ installers and feeds. Reads RELEASE_TAG and UPDATE_VERIFIER.').parse_args()
     publish()

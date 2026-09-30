@@ -41,7 +41,8 @@ class ShippedSourceTests(unittest.TestCase):
         unguarded = [line for line in release_source(modes).splitlines() if line.strip() and not line.startswith('//')]
         self.assertEqual(unguarded, [])
         build = (ROOT / 'build.sh').read_text()
-        self.assertIn('1) build_dir="${BUILD_DIR:-$PWD/build/test}"; set -- -D TOKEN_MONITOR_TESTS tests/TestModes.swift', build)
+        self.assertIn('1) build_dir="${build_dir:-$PWD/build/test}"; set -- -D TOKEN_MONITOR_TESTS tests/TestModes.swift', build)
+        self.assertEqual(build.count('TOKEN_MONITOR_TESTS'), 1)
 
     def test_guard_stripping(self):
         text = 'a\n#if TOKEN_MONITOR_TESTS\nCommandLine.arguments\n#endif\nb'

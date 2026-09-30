@@ -1,0 +1,44 @@
+version: "3"
+
+tasks:
+  app:
+    desc: Build Token Monitor.app (release by default; --test for the test build)
+    summary: |
+      Always builds; there is no skip-if-present. Env APP_VERSION, APP_BUILD and BUILD_DIR still apply.
+
+      Usage:
+        task build:app
+        task build:app -- --test
+        task build:app -- --build-dir /tmp/token-release --expect-arch arm64
+    cmds:
+      - sh build.sh {{.CLI_ARGS}}
+    dir: "{{.ROOT_DIR}}"
+
+  check:
+    desc: Check a built app (release app, or --test-build to run the native self-tests)
+    summary: |
+      Usage:
+        task build:check -- "build/Token Monitor.app"
+        task build:check -- --test-build "build/test/Token Monitor.app"
+    cmds:
+      - python3 scripts/check_app.py {{.CLI_ARGS}}
+    dir: "{{.ROOT_DIR}}"
+
+  check:updater:
+    desc: Start the embedded updater of a test build in a disposable identity
+    summary: |
+      Usage:
+        task build:check:updater -- "build/test/Token Monitor.app"
+    cmds:
+      - python3 -B scripts/check_updater.py {{.CLI_ARGS}}
+    dir: "{{.ROOT_DIR}}"
+
+  check:signatures:
+    desc: Verify update signatures and tamper rejection with disposable keys (SPARKLE_TOOLS required)
+    summary: |
+      Usage:
+        SPARKLE_TOOLS=build/sparkle task build:check:signatures
+        SPARKLE_TOOLS=build/sparkle task build:check:signatures -- -v
+    cmds:
+      - python3 -B scripts/test_signatures.py {{.CLI_ARGS}}
+    dir: "{{.ROOT_DIR}}"

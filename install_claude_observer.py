@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Install the explicitly authorized quota observer, preserving the prior footer."""
-import argparse,json,os,shlex,shutil,tempfile,time
+import argparse,json,os,shlex,tempfile,time
 from pathlib import Path
 from private_state import secure_state, secure_directory
 
