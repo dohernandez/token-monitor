@@ -25,36 +25,45 @@ Apple’s guidance: [Open a Mac app from an unknown developer](https://support.a
 
 ## CI flow
 
-`.github/workflows/macos.yml` runs for PRs to `main`, pushes to `main` (including
-merges), and manual dispatch. Closing a PR without merging never publishes a release.
-Manual dispatch publishes only when run from `main`.
+Two workflows:
+
+- `.github/workflows/checks.yml` (**Checks**) runs for PRs to `main`, pushes to `main`
+  (including merges) and manual dispatch. It holds every check, one job per row in a
+  PR's checks list.
+- `.github/workflows/release.yml` (**Release**) runs only when Checks completed
+  successfully for a push or manual run on `main` in this repository (never for a PR
+  or a fork). It packages the exact app bundles that Checks run tested. Closing a PR
+  without merging never publishes a release.
 
 Every job installs Task 3 from the checksum pin in `taskfiles/provision/task.json`,
-then calls tasks only (see [Tooling](DEVELOPMENT.md#tooling)). Every PR runs:
+then calls tasks only (see [Tooling](DEVELOPMENT.md#tooling)). Each Checks row runs the
+task its local git hook runs:
 
-- **Commit signatures:** every new PR commit must be verified by GitHub.
-- **Lint:** the same tasks the git hooks run: ruff (`task common:lint`), the CLI_ARGS
-  check, the branch-name check (`task common:check:branch-name`), and `task
-  common:check:pr-messages`. The last one runs `task common:check:commit-msg` (the
-  commit-msg hook's task) on every new commit message and, with `--attribution-only`,
-  on the PR description. A description edit alone does not rerun the check; push
-  or rerun the job after editing.
-- **Test and build (arm64):** native macOS 15 release and test builds, release helper
-  tests, native self-tests and updater startup (test build only), a check that the
-  release binary has no test launch modes, signature integrity, DMG
-  creation/verification and mounted-app checks.
-- **Test and build (x86_64):** the same checks on the Intel macOS 15 runner.
+| Check | Task | What it enforces |
+|---|---|---|
+| **Commit signatures** | `common:check:commit-signatures` | Every new commit is GitHub-verified |
+| **Commit messages** | `common:check:pr-messages` → `common:check:commit-msg` | Every new commit is a conventional commit without AI attribution; the PR description has no AI attribution |
+| **Branch name** (PRs only) | `common:check:branch-name` | `<type>/<slug>` with a known type; a no-release branch changes no shipped file |
+| **Lint** | `common:lint`, `common:check:task-cli-args` | ruff correctness lint; every task passes CLI arguments |
+| **Test and build (arm64)** | `build:*`, `common:test:*`, `release:package` | See below |
+| **Test and build (x86_64)** | the same | The same on the Intel macOS 15 runner |
+
+A PR description edit alone does not rerun **Commit messages**; push or rerun the
+job after editing. **Test and build (arm64)** covers:
+native macOS 15 release and test builds, release helper tests, native self-tests and
+updater startup (test build only), a check that the release binary has no test launch
+modes, signature integrity, DMG creation/verification and mounted-app checks.
 
 Token Monitor additionally runs its Python accounting/observer suite with the
 bundled interpreter and a collector smoke test against a temporary empty home/state.
 Neither installer verification nor CI installs an observer or reads real agent data.
 Disk self-tests use temporary saved-state paths, including permission-migration fixtures.
 
-After a main build passes all checks (a `chore/`, `ci/`, `docs/` or `test/` merge stops
-after the version job reports `release=false`):
+After Checks passes on `main`, Release runs (a `chore/`, `ci/`, `docs/` or `test/`
+merge stops after its version job reports `release=false`):
 
 1. Reserve a semantic version tag at the exact tested commit.
-2. Download those tested app bundles, stamp their release version, and re-sign locally.
+2. Download those tested app bundles from the Checks run, stamp their release version, and re-sign locally.
 3. Create one DMG and SHA-256 file per architecture; verify each mounted image.
 4. Sign each final DMG and its architecture-specific appcast with Ed25519.
 5. Verify both feeds and installers against the committed public key, upload all
@@ -62,7 +71,7 @@ after the version job reports `release=false`):
 
 The workflow uses the repository `GITHUB_TOKEN`; no personal `GH_TOKEN` is needed. Signing uses `SPARKLE_PRIVATE_KEY` from the
 `release` environment, restricted to the `main` branch. PR jobs cannot access it.
-It does not depend on a release event starting another workflow. PR jobs have no
+Release starts from the Checks run's completion, not from a GitHub release event. PR jobs have no
 repository write permission. Only version reservation and publication can write.
 Action versions are pinned to commit SHAs.
 

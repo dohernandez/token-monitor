@@ -9,7 +9,7 @@ Options:
   --attribution-only    Check only for AI attribution (PR descriptions have no subject line).
 
 Run by the commit-msg git hook (pre-commit, stage commit-msg) and, through
-check_pr_messages.py, by the CI Lint job for commits made through the GitHub API.
+check_pr_messages.py, by the CI "Commit messages" check for commits made through the GitHub API.
 Exit 0 when the text is valid, else 1 with the offending lines and the fix.
 
 The attribution patterns match genlayer-node's check-commit-message.sh. They forbid

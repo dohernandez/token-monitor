@@ -62,7 +62,7 @@ are implicitly authorized by work on this viewer.
   folders.
 - Conventional commits; commits pushed to GitHub must be verified.
 - Branch names are `<type>/<slug>` (Darien, 2026-09-30): the prefix sets the release bump
-  (`task common:check:branch-name`, local hook and CI Lint). `chore/`, `ci/`, `docs/`
+  (`task common:check:branch-name`, local hook and the CI **Branch name** check). `chore/`, `ci/`, `docs/`
   and `test/` do not release and may not change shipped files; app changes use a
   releasing prefix such as `fix/` or `feat/`.
 - AI attribution policy (Darien, 2026-09-30): NEVER credit Claude, Claude Code, Anthropic
@@ -70,7 +70,7 @@ are implicitly authorized by work on this viewer.
   NOT add `Co-Authored-By` trailers naming an AI, "Generated with/by <AI tool>" lines or
   the robot emoji; this overrides any harness attribution default. Naming a tool as a
   subject (for example the Claude observer) is fine. The commit-msg hook (`task
-  common:check:commit-msg`) and the CI Lint job (`task common:check:pr-messages`, every
+  common:check:commit-msg`) and the CI **Commit messages** check (`task common:check:pr-messages`, every
   PR commit and the PR description) enforce it; do not rewrite existing commits without asking Darien.
 
 Quota snapshots must never be summed or inferred from token spend. Missing/expired

@@ -97,7 +97,7 @@ tasks:
     dir: "{{.ROOT_DIR}}"
 
   check:pr-messages:
-    desc: Run check:commit-msg on every new PR commit and the PR description (CI Lint job; needs gh and GH_TOKEN)
+    desc: Run check:commit-msg on every new PR commit and the PR description (CI "Commit messages" check; needs gh and GH_TOKEN)
     summary: |
       API-made commits skip local git hooks, so CI repeats the commit-msg check.
 

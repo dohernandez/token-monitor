@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check every new commit message, and the PR description, for AI attribution (CI Lint job).
+"""Check every new commit message, and the PR description, for AI attribution (CI "Commit messages" check).
 
 Usage:
   python3 taskfiles/common/scripts/check_pr_messages.py --repo OWNER/NAME --sha SHA [--pr NUMBER]
