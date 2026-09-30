@@ -87,8 +87,9 @@ GitHub's signed commit API skip local hooks, so the CI **Lint** job runs that sa
 task on every PR commit and on the PR description (`task common:check:pr-messages`),
 next to `task common:lint`, `task common:check:task-cli-args` and `task
 common:check:branch-name`. Branch names must be `<type>/<slug>`: the prefix sets the
-release bump ([version policy](RELEASING.md#version-policy-and-recovery)); the
-pre-commit hook checks the current branch too.
+release bump, and `chore/`, `ci/`, `docs/`, `test/` do not release
+([version policy](RELEASING.md#version-policy-and-recovery)); the pre-commit hook
+checks the current branch too.
 Commit and let the hooks run once; `task common:precommit` runs them on demand.
 Commits pushed to GitHub must still carry verified signatures ([branch rules](RELEASING.md#branch-rules)).
 

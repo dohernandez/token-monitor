@@ -50,7 +50,8 @@ bundled interpreter and a collector smoke test against a temporary empty home/st
 Neither installer verification nor CI installs an observer or reads real agent data.
 Disk self-tests use temporary saved-state paths, including permission-migration fixtures.
 
-After a main build passes all checks:
+After a main build passes all checks (a `chore/`, `ci/`, `docs/` or `test/` merge stops
+after the version job reports `release=false`):
 
 1. Reserve a semantic version tag at the exact tested commit.
 2. Download those tested app bundles, stamp their release version, and re-sign locally.
@@ -70,15 +71,19 @@ Action versions are pinned to commit SHAs.
 `VERSION` sets the initial release floor, **1.0.0**. Later versions derive from the
 highest existing `vMAJOR.MINOR.PATCH` tag and the merged PR’s branch:
 
-The Lint check (`task common:check:branch-name`) and a local pre-commit hook reject a
-branch that is not `<type>/<slug>` with a known type, so a misspelled prefix cannot
-silently ship as a patch.
-
-| Prefix | Bump |
+| Prefix | Release |
 |---|---|
+| `chore/`, `ci/`, `docs/`, `test/` | **None**: tooling, CI, docs and test-only changes merge without a tag or installers |
 | `major*`, `release*` | Major |
 | `minor*`, `feature*`, `feat*` | Minor |
-| Anything else (`fix/`, `patch/`, `docs/`, dependencies) | Patch |
+| Anything else (`fix/`, `hotfix/`, `patch/`, `refactor/`, `build/`, `perf/`, `deps/`) | Patch |
+
+The Lint check (`task common:check:branch-name`) and a local pre-commit hook reject a
+branch that is not `<type>/<slug>` with a known type, so a misspelled prefix cannot
+silently ship as a patch. In a PR, the check also fails a no-release branch that
+changes a shipped file (Swift sources, bundled Python, `VERSION`, or the bundling
+scripts; `SHIPPED` in `check_branch_name.py`), so an app change always releases.
+Changes merged without a release ship with the next releasing merge.
 
 Direct main pushes and manual dispatch without a matching merged PR default to patch.
 Main protection is intended to prevent direct pushes. Never rename or move a release tag.

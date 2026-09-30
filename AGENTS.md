@@ -62,7 +62,9 @@ are implicitly authorized by work on this viewer.
   folders.
 - Conventional commits; commits pushed to GitHub must be verified.
 - Branch names are `<type>/<slug>` (Darien, 2026-09-30): the prefix sets the release bump
-  (`task common:check:branch-name`, local hook and CI Lint).
+  (`task common:check:branch-name`, local hook and CI Lint). `chore/`, `ci/`, `docs/`
+  and `test/` do not release and may not change shipped files; app changes use a
+  releasing prefix such as `fix/` or `feat/`.
 - AI attribution policy (Darien, 2026-09-30): NEVER credit Claude, Claude Code, Anthropic
   or any other AI assistant as an author in commits, PR descriptions, code or docs. Do
   NOT add `Co-Authored-By` trailers naming an AI, "Generated with/by <AI tool>" lines or
