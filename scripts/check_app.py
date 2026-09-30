@@ -8,6 +8,31 @@ import tempfile
 from pathlib import Path
 from bundle_info import APP_NAME, BINARY, IDENTIFIER
 
+# Strings that only tests/TestModes.swift compiles in (long enough to be stored
+# as bytes, unlike Swift's inline small strings).
+TEST_MODE_MARKERS = (b'TOKEN_MONITOR_TEST_MODE', b'--updater-self-test', b'PASS: ', b'TokenMonitor-launch-diagnostic')
+
+
+def test_markers(app):
+    binary = (Path(app) / 'Contents/MacOS' / BINARY).read_bytes()
+    return [marker.decode() for marker in TEST_MODE_MARKERS if marker in binary]
+
+
+def check_release_binary(app):
+    found = test_markers(app)
+    assert not found, 'Release binary contains test launch modes: ' + ', '.join(found)
+    print('PASS: release binary contains no test launch modes')
+
+
+def check_test_build(app):
+    """Run the native self-tests in a TEST_BUILD=1 app."""
+    app = Path(app).resolve()
+    assert len(test_markers(app)) == len(TEST_MODE_MARKERS), 'Not a TEST_BUILD=1 app; build it with TEST_BUILD=1 sh build.sh'
+    subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
+    output = subprocess.run([str(app / 'Contents/MacOS' / BINARY), '--self-test'], check=True, timeout=120, capture_output=True, text=True).stdout
+    print(output, end='')
+    assert output.startswith('TOKEN_MONITOR_TEST_MODE'), 'Self-test did not run'
+
 
 def check(app):
     app = Path(app).resolve()
@@ -19,7 +44,7 @@ def check(app):
     assert (app/'Contents/Frameworks/Sparkle.framework').is_dir()
     assert (app/'Contents/Resources/SPARKLE-LICENSE').is_file()
     subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
-    subprocess.run([str(app / 'Contents/MacOS' / BINARY), '--self-test'], check=True, timeout=120)
+    check_release_binary(app)
     if BINARY == 'TokenMonitor':
         resources = app / 'Contents/Resources'
         python = resources / 'python/bin/python3'
@@ -37,4 +62,9 @@ def check(app):
     print('PASS: ' + APP_NAME + ' ' + info['CFBundleShortVersionString'] + ' package')
 
 if __name__ == '__main__':
-    check(sys.argv[1])
+    if sys.argv[1:2] == ['--test-build'] and len(sys.argv) == 3:
+        check_test_build(sys.argv[2])
+    elif len(sys.argv) == 2 and not sys.argv[1].startswith('-'):
+        check(sys.argv[1])
+    else:
+        sys.exit('usage: check_app.py <release app> | --test-build <TEST_BUILD=1 app>')

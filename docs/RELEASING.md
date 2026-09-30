@@ -32,8 +32,10 @@ Manual dispatch publishes only when run from `main`.
 Every PR runs:
 
 - **Commit signatures:** every new PR commit must be verified by GitHub.
-- **Test and build (arm64):** native macOS 15 build, release helper tests, native
-  self-tests, signature integrity, DMG creation/verification and mounted-app checks.
+- **Test and build (arm64):** native macOS 15 release and test builds, release helper
+  tests, native self-tests and updater startup (test build only), a check that the
+  release binary has no test launch modes, signature integrity, DMG
+  creation/verification and mounted-app checks.
 - **Test and build (x86_64):** the same checks on the Intel macOS 15 runner.
 
 Token Monitor additionally runs its Python accounting/observer suite with the
@@ -91,8 +93,9 @@ python3 scripts/package.py --app '/tmp/monitor-release-build/Token Monitor.app' 
 ```
 
 The package helper makes a copy before changing metadata. It never installs the app
-or modifies the input bundle. Checks include running `--self-test` inside the mounted
-read-only image. Updating the running local app remains a separate deliberate step.
+or modifies the input bundle. Checks on the staged and mounted read-only app include
+rejecting any test launch mode in the binary and running the bundled collector
+against an empty temporary home. Native self-tests run on the separate test build. Updating the running local app remains a separate deliberate step.
 
 ## Branch rules
 
@@ -194,7 +197,7 @@ For local signature regression checks after a build:
 SPARKLE_TOOLS=build/sparkle python3 -B scripts/test_signatures.py
 ```
 
-`scripts/check_updater.py` starts the embedded updater in a temporary app identity,
+`scripts/check_updater.py` starts the embedded updater of a `TEST_BUILD=1` app in a temporary identity,
 with automatic options disabled and no update UI. No test replaces or launches an installed app. Full interactive update/relaunch and
 Gatekeeper acceptance on a clean Mac remain manual acceptance checks. Verify these
 before claiming end-to-end installation acceptance. An older signed feed can be
