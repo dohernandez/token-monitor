@@ -37,11 +37,11 @@ Two workflows:
 
 Every job installs Task 3 from the checksum pin in `taskfiles/provision/task.json`,
 then calls tasks only (see [Tooling](DEVELOPMENT.md#tooling)). Each Checks row runs the
-task its local git hook runs:
+task its local git hook runs. Verified commit signatures are not a CI job: the
+"Protect main" ruleset enforces them itself ([branch rules](#branch-rules)).
 
 | Check | Task | What it enforces |
 |---|---|---|
-| **Commit signatures** | `common:check:commit-signatures` | Every new commit is GitHub-verified |
 | **Commit messages** | `common:check:pr-messages` → `common:check:commit-msg` | Every new commit is a conventional commit without AI attribution; the PR description has no AI attribution |
 | **Branch name** (PRs only) | `common:check:branch-name` | `<type>/<slug>` with a known type; a no-release branch changes no shipped file |
 | **Lint** | `common:lint`, `common:check:task-cli-args` | ruff correctness lint; every task passes CLI arguments |
@@ -127,12 +127,17 @@ against an empty temporary home. Native self-tests run on the separate test buil
 The intended rules live in `.github/main-ruleset.json`:
 
 - PR required; zero approving reviews for the current solo-maintainer workflow.
-- Verified signatures required for incoming commits.
-- All three checks above required from the GitHub Actions integration.
+- Verified signatures required for incoming commits (GitHub's `required_signatures`
+  rule; there is no separate CI job for it).
+- Required from the GitHub Actions integration: **Commit messages**, **Branch name**,
+  **Lint**, **Test and build (arm64)** and **Test and build (x86_64)**.
 - Branch must be up to date before merging; review conversations must be resolved.
 - No force-pushes, deletions, or administrator bypass list for `main`.
 
-**Activation verified (2026-09-22): active.** This repository is public. GitHub
+**Activation verified (2026-09-22): active** with the earlier required checks (Commit
+signatures and both Test and build jobs). The committed file now lists the checks
+above; it takes effect only when `task release:rules` applies it, which needs
+Darien's approval. This repository is public. GitHub
 Free enforces the rules above; secret scanning and push protection are also enabled.
 The server configuration was read back separately from the committed ruleset file.
 Use `task release:rules -- --validated-ref <branch>` only after the required

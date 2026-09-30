@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Check branch names in CI and a local hook, because the branch prefix sets the release bump.
-- Split CI into a Checks workflow (one PR row per check: Commit signatures, Commit messages, Branch name, Lint, Test and build) and a Release workflow that runs only after Checks passes on main.
+- Split CI into a Checks workflow (one PR row per check: Commit messages, Branch name, Lint, Test and build); verified signatures stay enforced by the main ruleset, not a CI job and a Release workflow that runs only after Checks passes on main.
 - Merge `chore/`, `ci/`, `docs/` and `test/` branches without a release; such a PR may not change shipped files.
 - Reject AI attribution in commit messages (commit-msg hook) and, in a new CI Lint job, in every PR commit and the PR description.
 - Move scripts into `taskfiles/<ns>/scripts/` and tests into `tests/unit/` and `tests/release/`.

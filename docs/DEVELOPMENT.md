@@ -48,7 +48,7 @@ only includes namespaces from `taskfiles/<ns>/Taskfile.yaml`:
 
 | Namespace | Tasks |
 |---|---|
-| `common` | `test` (`test:unit`, `test:release`), `lint`, `check`, `check:task-cli-args`, `check:commit-msg`, `check:pr-messages`, `check:branch-name`, `check:commit-signatures`, `precommit` |
+| `common` | `test` (`test:unit`, `test:release`), `lint`, `check`, `check:task-cli-args`, `check:commit-msg`, `check:pr-messages`, `check:branch-name`, `precommit` |
 | `build` | `app` (`--test` for the test build), `check`, `check:updater`, `check:signatures` |
 | `release` | `version`, `version:branch`, `archive`, `unpack`, `package`, `tools`, `sign`, `publish`, `rules` |
 | `docs` | `screenshots` |
