@@ -66,12 +66,19 @@ jobs:
         run: |
           test "$(uname -m)" = "${{ matrix.arch }}"
           sh build.sh
+      - name: Build test app
+        env:
+          TEST_BUILD: '1'
+          BUILD_DIR: ${{ runner.temp }}/test-build
+        run: sh build.sh
       - name: Verify update signatures and tamper rejection
         env:
           SPARKLE_TOOLS: ${{ runner.temp }}/build/sparkle
         run: python3 -B scripts/test_signatures.py
+      - name: Run native self-tests
+        run: python3 scripts/check_app.py --test-build "$RUNNER_TEMP/test-build/Token Monitor.app"
       - name: Check isolated updater startup
-        run: python3 -B scripts/check_updater.py "$RUNNER_TEMP/build/Token Monitor.app"
+        run: python3 -B scripts/check_updater.py "$RUNNER_TEMP/test-build/Token Monitor.app"
       - name: Check packaged app
         run: python3 scripts/check_app.py "$RUNNER_TEMP/build/Token Monitor.app"
       - name: Test accounting with bundled Python

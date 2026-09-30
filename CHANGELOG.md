@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keep native test launch modes (`--self-test`, `--updater-self-test`, `--diagnostics`, `--show`) out of release builds; they compile only with `TEST_BUILD=1`.
 - Add signed Sparkle updates, manual checking and optional automatic updates.
 - Enforce owner-only cache permissions while preserving saved data.
 - Reject unsafe archive links and duplicate entries when bundling Python.

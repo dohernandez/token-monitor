@@ -20,7 +20,9 @@ Preserve these contracts:
 - Fixture tests must use temporary sources/state. Never edit real provider records.
 
 Run `python3 -m unittest -v test_collector.py test_quotas.py test_privacy.py`, build, and verify signing for runtime
-changes. Add regression fixtures for accounting changes. A successful build is not
+changes. Nothing test-only ships (Darien, 2026-09-30): test launch modes and test hooks
+live in `tests/TestModes.swift` or inside `#if TOKEN_MONITOR_TESTS`, compiled only by
+`TEST_BUILD=1 sh build.sh`; `scripts/test_shipped_source.py` and `check_app.py` enforce it. Add regression fixtures for accounting changes. A successful build is not
 visual UI verification. Do not invoke Computer Use permissions merely for screenshots.
 Preserve a working app/source copy before replacing a used version. Discover and
 verify exact process IDs before stopping anything; never use broad kill patterns.

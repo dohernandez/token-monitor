@@ -50,13 +50,15 @@ git clone https://github.com/dohernandez/token-monitor.git
 cd token-monitor
 python3 -m unittest -v test_collector.py test_quotas.py test_privacy.py
 sh build.sh
-"build/Token Monitor.app/Contents/MacOS/TokenMonitor" --self-test
-codesign --verify --deep --strict "build/Token Monitor.app"
-open "build/Token Monitor.app" --args --show
+python3 scripts/check_app.py "build/Token Monitor.app"
+TEST_BUILD=1 sh build.sh
+python3 scripts/check_app.py --test-build "build/test/Token Monitor.app"
+open "build/Token Monitor.app"
 ```
 
-The app lives in `build/Token Monitor.app`. Run each command only after the preceding
-one succeeds. For updates, follow [safe replacement and recovery](docs/DEVELOPMENT.md).
+The app lives in `build/Token Monitor.app`. Native self-tests run only in the separate
+test build (`build/test/`); the release app has no test launch options. Run each
+command only after the preceding one succeeds. For updates, follow [safe replacement and recovery](docs/DEVELOPMENT.md).
 
 **Optional Claude subscription reporting:** run `python3 install_claude_observer.py`
 after reading the [observer installation and uninstall instructions](docs/USAGE.md#subscription-windows).

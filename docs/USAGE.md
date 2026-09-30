@@ -145,14 +145,14 @@ local polling interval under UserDefaults key `refreshSeconds` (default 30 secon
 range 5–3,600). Saving replaces the timer without interrupting collection. Back
 discards unsaved edits; Quit remains available. The interval controls reads of local
 records and does not force a provider to publish fresh quota data. Indexing retries
-still use bounded batches. The binary `--self-test` verifies preference persistence,
+still use bounded batches. The test build's `--self-test` verifies preference persistence,
 validation, and timer replacement without reading live usage data.
 
 Quit is the rightmost power icon in the persistent footer. On Info and Settings,
 Back stays fixed immediately above that footer, right-aligned, outside scrolling
 content. Leaving Settings with Back discards unsaved edits.
 
-The binary `--self-test` also checks badge thresholds, cross-provider priority, stale warning retention, expiry, and missing/invalid reports. Badge tooltip and accessibility label identify the provider, window, percentage and stale status.
+The test build's `--self-test` also checks badge thresholds, cross-provider priority, stale warning retention, expiry, and missing/invalid reports. Badge tooltip and accessibility label identify the provider, window, percentage and stale status.
 
 The footer follows Disk Monitor: a status line (saved usage/subscription reports, reading, partial indexing, or failure), followed by the configured refresh interval and last successful local check time. This check time is not the provider report time; quota cards retain their own timestamps and stale labels. Source coverage remains in Usage notices.
 
