@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Check branch names in CI and a local hook, because the branch prefix sets the release bump.
 - Reject AI attribution in commit messages (commit-msg hook) and, in a new CI Lint job, in every PR commit and the PR description.
 - Move scripts into `taskfiles/<ns>/scripts/` and tests into `tests/unit/` and `tests/release/`.
 - Run all project tooling through `Taskfile.yaml` namespaces; CI installs a checksum-pinned Task and calls tasks only. Add pre-commit hooks for lint, task CLI arguments, fast tests and conventional commit messages.

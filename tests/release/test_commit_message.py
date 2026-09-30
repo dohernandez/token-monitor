@@ -3,6 +3,7 @@ import pathlib
 import sys
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(_ROOT / 'taskfiles/common/scripts')]
+import shutil
 import unittest
 from check_commit_message import attribution, check
 from check_pr_messages import failures
@@ -43,10 +44,21 @@ class CommitMessageTests(unittest.TestCase):
         self.assertEqual(check('Merge branch main into feature'), [])
 
     def test_pr_description_only_checks_attribution(self):
+        in_process = lambda text, full: check(text) if full else attribution(text)  # noqa: E731
         items = [('abc1234', 'fix: a change', True), ('PR #1 description', 'Free prose, no conventional subject.', False)]
-        self.assertEqual(failures(items), [])
+        self.assertEqual(failures(items, in_process), [])
         items.append(('PR #2 description', 'Body\n\N{ROBOT FACE} Generated with Claude Code', False))
-        self.assertEqual(len(failures(items)), 1)
+        self.assertEqual(len(failures(items, in_process)), 1)
+
+    @unittest.skipUnless(shutil.which('task'), 'Task is not installed')
+    def test_ci_runs_the_hook_task(self):
+        """CI goes through `task common:check:commit-msg`, exactly like the commit-msg hook."""
+        items = [('abc1234', 'fix: a change', True),
+                 ('def5678', 'Merge branch main\n\nCo-Authored-By: Claude <noreply@anthropic.com>', True),
+                 ('PR #3 description', 'Prose without a conventional subject.', False),
+                 ('PR #4 description', 'Body\n\N{ROBOT FACE} Generated with Claude Code', False)]
+        found = failures(items)
+        self.assertEqual([f.split(':')[0] for f in found], ['def5678', 'PR #4 description'])
 
 
 if __name__ == '__main__':

@@ -48,7 +48,7 @@ only includes namespaces from `taskfiles/<ns>/Taskfile.yaml`:
 
 | Namespace | Tasks |
 |---|---|
-| `common` | `test` (`test:unit`, `test:release`), `lint`, `check`, `check:task-cli-args`, `check:commit-msg`, `check:pr-messages`, `check:commit-signatures`, `precommit` |
+| `common` | `test` (`test:unit`, `test:release`), `lint`, `check`, `check:task-cli-args`, `check:commit-msg`, `check:pr-messages`, `check:branch-name`, `check:commit-signatures`, `precommit` |
 | `build` | `app` (`--test` for the test build), `check`, `check:updater`, `check:signatures` |
 | `release` | `version`, `version:branch`, `archive`, `unpack`, `package`, `tools`, `sign`, `publish`, `rules` |
 | `docs` | `screenshots` |
@@ -83,9 +83,12 @@ commit-msg hook requires a conventional commit subject and rejects AI attributio
 tool>" and the robot emoji; people, `[bot]` co-authors and tool names as subjects pass).
 Like genlayer-node, the hook calls a task (`task common:check:commit-msg`) that runs
 the script, and CI calls the same tasks rather than pre-commit. Commits made through
-GitHub's signed commit API skip local hooks, so the CI **Lint** job repeats the check
-on every PR commit and on the PR description (`task common:check:pr-messages`), next
-to `task common:lint` and `task common:check:task-cli-args`.
+GitHub's signed commit API skip local hooks, so the CI **Lint** job runs that same
+task on every PR commit and on the PR description (`task common:check:pr-messages`),
+next to `task common:lint`, `task common:check:task-cli-args` and `task
+common:check:branch-name`. Branch names must be `<type>/<slug>`: the prefix sets the
+release bump ([version policy](RELEASING.md#version-policy-and-recovery)); the
+pre-commit hook checks the current branch too.
 Commit and let the hooks run once; `task common:precommit` runs them on demand.
 Commits pushed to GitHub must still carry verified signatures ([branch rules](RELEASING.md#branch-rules)).
 

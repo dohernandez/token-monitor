@@ -61,6 +61,8 @@ are implicitly authorized by work on this viewer.
 - Tests never touch real provider records, settings or state; each run uses temporary
   folders.
 - Conventional commits; commits pushed to GitHub must be verified.
+- Branch names are `<type>/<slug>` (Darien, 2026-09-30): the prefix sets the release bump
+  (`task common:check:branch-name`, local hook and CI Lint).
 - AI attribution policy (Darien, 2026-09-30): NEVER credit Claude, Claude Code, Anthropic
   or any other AI assistant as an author in commits, PR descriptions, code or docs. Do
   NOT add `Co-Authored-By` trailers naming an AI, "Generated with/by <AI tool>" lines or

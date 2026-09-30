@@ -34,9 +34,10 @@ then calls tasks only (see [Tooling](DEVELOPMENT.md#tooling)). Every PR runs:
 
 - **Commit signatures:** every new PR commit must be verified by GitHub.
 - **Lint:** the same tasks the git hooks run: ruff (`task common:lint`), the CLI_ARGS
-  check, and `task common:check:pr-messages`. The last one requires every new commit
-  message to be a conventional commit without AI attribution, and the PR description to
-  be free of AI attribution. A description edit alone does not rerun the check; push
+  check, the branch-name check (`task common:check:branch-name`), and `task
+  common:check:pr-messages`. The last one runs `task common:check:commit-msg` (the
+  commit-msg hook's task) on every new commit message and, with `--attribution-only`,
+  on the PR description. A description edit alone does not rerun the check; push
   or rerun the job after editing.
 - **Test and build (arm64):** native macOS 15 release and test builds, release helper
   tests, native self-tests and updater startup (test build only), a check that the
@@ -68,6 +69,10 @@ Action versions are pinned to commit SHAs.
 
 `VERSION` sets the initial release floor, **1.0.0**. Later versions derive from the
 highest existing `vMAJOR.MINOR.PATCH` tag and the merged PR’s branch:
+
+The Lint check (`task common:check:branch-name`) and a local pre-commit hook reject a
+branch that is not `<type>/<slug>` with a known type, so a misspelled prefix cannot
+silently ship as a patch.
 
 | Prefix | Bump |
 |---|---|
