@@ -39,9 +39,10 @@ are implicitly authorized by work on this viewer.
 | `main.swift`, `Updates.swift` | The shipped app (SwiftUI, AppKit, Sparkle) |
 | `collector.py`, `quotas.py`, `private_state.py`, `claude_statusline.py`, `install_claude_observer.py` | Python resources bundled into the app |
 | `Taskfile.yaml` | Includes only; every tooling entry point is a task |
-| `taskfiles/<ns>/Taskfile.yaml`, `taskfiles/<ns>/scripts/` | Tasks and the scripts they call: `common`, `build`, `release`, `docs`, `provision` |
+| `taskfiles/<ns>/Taskfile.yaml`, `taskfiles/<ns>/scripts/` | Tasks and the scripts they call: `common`, `build`, `release`, `devtools`, `docs`, `provision` |
 | `taskfiles/build/scripts/` | `build.sh`, bundle metadata, pinned Python and Sparkle, update public key, app checks |
-| `taskfiles/release/scripts/` | Version reservation, DMG packaging, signing, verification, publication, branch rules |
+| `taskfiles/release/scripts/` | Version reservation, DMG packaging, signing, verification, publication |
+| `taskfiles/devtools/rulesets/`, `taskfiles/devtools/scripts/` | GitHub rulesets as code (snapshots and `devtools:rulesets:*`) |
 | `taskfiles/local/` | Optional personal tasks; gitignored |
 | `tests/unit/` | Accounting, quota, observer and privacy fixture tests (temporary sources and state) |
 | `tests/release/` | Release helper, archive, signature and shipped-source tests |
@@ -57,6 +58,9 @@ are implicitly authorized by work on this viewer.
 - GitHub workflows call tasks, not scripts (Darien, 2026-09-30). The only direct call is
   the checksum-pinned Task bootstrap; do not replace it with an unverified installer
   action while the release job holds the signing key.
+- Rulesets are code (Darien, 2026-09-30, as in genlayer-node): change protection through
+  `taskfiles/devtools/rulesets/*.json` and `devtools:rulesets:*`; after any UI change run
+  `export` and commit. `apply`/`remove` change live settings and need Darien's approval.
 - Nothing test-only ships (Darien, 2026-09-30). Test-only helpers go in `tests/`.
 - Tests never touch real provider records, settings or state; each run uses temporary
   folders.

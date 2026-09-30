@@ -124,7 +124,9 @@ against an empty temporary home. Native self-tests run on the separate test buil
 
 ## Branch rules
 
-The intended rules live in `.github/main-ruleset.json`:
+Rulesets are code, as in genlayer-node: the committed source of truth is
+`taskfiles/devtools/rulesets/*.json` (normalized snapshots, one per ruleset). The
+"Protect main" snapshot (`protect-main.json`) holds:
 
 - PR required; zero approving reviews for the current solo-maintainer workflow.
 - Verified signatures required for incoming commits (GitHub's `required_signatures`
@@ -135,17 +137,25 @@ The intended rules live in `.github/main-ruleset.json`:
 - No force-pushes, deletions, or administrator bypass list for `main`.
 
 **Activation verified (2026-09-22): active** with the earlier required checks (Commit
-signatures and both Test and build jobs). The committed file now lists the checks
-above; it takes effect only when `task release:rules` applies it, which needs
-Darien's approval. This repository is public. GitHub
+signatures and both Test and build jobs). The snapshot now lists the checks above;
+`task devtools:rulesets:diff` shows exactly that difference until the snapshot is
+applied, which needs Darien's approval. This repository is public. GitHub
 Free enforces the rules above; secret scanning and push protection are also enabled.
 The server configuration was read back separately from the committed ruleset file.
-Use `task release:rules -- --validated-ref <branch>` only after the required
-checks pass when deliberately updating the rules.
+| When you... | Run | Then |
+|---|---|---|
+| Changed a ruleset in the GitHub UI or API | `task devtools:rulesets:export` | Commit the refreshed snapshot |
+| Want to change protection, code first | Edit the snapshot, then `task devtools:rulesets:apply -- --validated-ref <ref>` | Commit the snapshot in the same PR |
+| Create a ruleset | Add `taskfiles/devtools/rulesets/<slug>.json`, then `apply` | Commit it |
+| Remove a ruleset | `task devtools:rulesets:remove -- --name "<exact name>"` | Commit the snapshot deletion |
+| Suspect drift | `task devtools:rulesets:diff` (exit 2 on drift) | `export` or `apply`, depending on which side is right |
 
-The helper checks the actual check names, integration and successful conclusions,
-then creates or updates only the ruleset named “Protect main” and reads it back.
-It never changes repository visibility, billing, unrelated rulesets, or credentials.
+`apply` refuses unless every required status check in the snapshots already passed
+on `--validated-ref`, so a renamed or removed check can never leave PRs waiting
+forever. It reads each ruleset back and fails if the result differs from the
+snapshot. It never deletes, and it never changes repository visibility, billing,
+secrets or credentials. `apply` and `remove` change live GitHub settings: run them
+only with Darien's approval.
 
 Signed commits can be made locally using a registered signing key, or through
 GitHub’s signed web/GraphQL commit interface. Unsigned PR commits can block a merge

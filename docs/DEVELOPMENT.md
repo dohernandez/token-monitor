@@ -50,7 +50,8 @@ only includes namespaces from `taskfiles/<ns>/Taskfile.yaml`:
 |---|---|
 | `common` | `test` (`test:unit`, `test:release`), `lint`, `check`, `check:task-cli-args`, `check:commit-msg`, `check:pr-messages`, `check:branch-name`, `precommit` |
 | `build` | `app` (`--test` for the test build), `check`, `check:updater`, `check:signatures` |
-| `release` | `version`, `version:branch`, `archive`, `unpack`, `package`, `tools`, `sign`, `publish`, `rules` |
+| `release` | `version`, `version:branch`, `archive`, `unpack`, `package`, `tools`, `sign`, `publish` |
+| `devtools` | `rulesets:export`, `rulesets:diff`, `rulesets:apply`, `rulesets:remove` (rulesets as code) |
 | `docs` | `screenshots` |
 | `provision` | `setup-dev`, `install-ruff`, `install-precommit`, `configure-precommit`, `install-task` |
 | `local` | optional, gitignored personal tasks (`taskfiles/local/Taskfile.yaml`) |
