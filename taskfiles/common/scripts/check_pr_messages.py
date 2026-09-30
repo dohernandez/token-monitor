@@ -56,10 +56,13 @@ def commit_msg_task(text, full):
     return lines or ['common:check:commit-msg failed: ' + result.stderr.strip()]
 
 
-def failures(items, run=commit_msg_task):
+def failures(items, run=commit_msg_task, log=None):
     found = []
     for label, text, full in items:
-        found += ['%s: %s' % (label, error) for error in run(text, full)]
+        errors = run(text, full)
+        if log:
+            log('%-4s %-22s task common:check:commit-msg%s' % ('FAIL' if errors else 'ok', label, '' if full else ' --attribution-only'))
+        found += ['%s: %s' % (label, error) for error in errors]
     return found
 
 
@@ -73,7 +76,7 @@ def main():
     if not any(full for _, _, full in items):
         print('FAIL: no commits found', file=sys.stderr)
         return 1
-    problems = failures(items)
+    problems = failures(items, log=print)
     for problem in problems:
         print('FAIL: ' + problem, file=sys.stderr)
     if problems:
