@@ -31,6 +31,12 @@ class CommitMessageTests(unittest.TestCase):
             with self.subTest(message=message):
                 self.assertEqual(check(message), [])
 
+    def test_skipped_subjects_still_scan_attribution(self):
+        for subject in ('Merge branch main into feature', 'Revert "fix: a change"', 'fixup! fix: a change', 'squash! fix: a change'):
+            with self.subTest(subject=subject):
+                self.assertEqual(check(subject), [])
+                self.assertTrue(check(subject + '\n\nCo-Authored-By: Claude <noreply@anthropic.com>'))
+
     def test_subject_rules(self):
         self.assertTrue(check('Show pending updates'))
         self.assertTrue(check('fix: ' + 'x' * 100))
