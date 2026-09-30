@@ -48,9 +48,10 @@ only includes namespaces from `taskfiles/<ns>/Taskfile.yaml`:
 
 | Namespace | Tasks |
 |---|---|
-| `common` | `test` (`test:unit`, `test:release`), `lint`, `check`, `check:task-cli-args`, `check:commit-message`, `check:commit-signatures`, `precommit` |
+| `common` | `test` (`test:unit`, `test:release`), `lint`, `check`, `check:task-cli-args`, `check:commit-msg`, `check:pr-messages`, `check:branch-name`, `precommit` |
 | `build` | `app` (`--test` for the test build), `check`, `check:updater`, `check:signatures` |
-| `release` | `version`, `version:branch`, `archive`, `unpack`, `package`, `tools`, `sign`, `publish`, `rules` |
+| `release` | `version`, `version:branch`, `archive`, `unpack`, `package`, `tools`, `sign`, `publish` |
+| `devtools` | `rulesets:export`, `rulesets:diff`, `rulesets:apply`, `rulesets:remove` (rulesets as code) |
 | `docs` | `screenshots` |
 | `provision` | `setup-dev`, `install-ruff`, `install-precommit`, `configure-precommit`, `install-task` |
 | `local` | optional, gitignored personal tasks (`taskfiles/local/Taskfile.yaml`) |
@@ -78,7 +79,19 @@ Set up once with `task provision:setup-dev`. It installs:
 - the git hooks.
 
 On commit, the hooks run lint, the CLI_ARGS check and `task common:test`. The
-commit-msg hook requires a conventional commit subject and rejects AI attribution.
+commit-msg hook requires a conventional commit subject and rejects AI attribution
+(AI `Co-Authored-By` trailers, AI noreply addresses, "Generated/Created by/with <AI
+tool>" and the robot emoji; people, `[bot]` co-authors and tool names as subjects pass).
+Like genlayer-node, the hook calls a task (`task common:check:commit-msg`) that runs
+the script, and CI calls the same tasks rather than pre-commit. Commits made through
+GitHub's signed commit API skip local hooks, so CI repeats every hook as its own PR
+check ([check table](RELEASING.md#ci-flow)): **Commit messages** runs that same task on
+every PR commit and on the PR description (`task common:check:pr-messages`), **Branch
+name** runs `task common:check:branch-name`, and **Lint** runs `task common:lint` and
+`task common:check:task-cli-args`. Branch names must be `<type>/<slug>`: the prefix sets the
+release bump, and `chore/`, `ci/`, `docs/`, `test/` do not release
+([version policy](RELEASING.md#version-policy-and-recovery)); the pre-commit hook
+checks the current branch too.
 Commit and let the hooks run once; `task common:precommit` runs them on demand.
 Commits pushed to GitHub must still carry verified signatures ([branch rules](RELEASING.md#branch-rules)).
 

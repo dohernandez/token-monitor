@@ -25,7 +25,7 @@ launch modes and test hooks live in `tests/TestModes.swift` or inside
 `#if TOKEN_MONITOR_TESTS`, compiled only by the test build; `tests/release/test_shipped_source.py`
 and `check_app.py` enforce it. All tooling runs through `Taskfile.yaml` and workflows
 call tasks ([Tooling](docs/DEVELOPMENT.md#tooling)). Commits are conventional commits with
-no AI attribution (Darien, 2026-09-30; the commit-msg hook enforces it). Add regression fixtures for accounting changes. A successful build is not
+no AI attribution (see Tooling rules). Add regression fixtures for accounting changes. A successful build is not
 visual UI verification. Do not invoke Computer Use permissions merely for screenshots.
 Preserve a working app/source copy before replacing a used version. Discover and
 verify exact process IDs before stopping anything; never use broad kill patterns.
@@ -39,9 +39,10 @@ are implicitly authorized by work on this viewer.
 | `main.swift`, `Updates.swift` | The shipped app (SwiftUI, AppKit, Sparkle) |
 | `collector.py`, `quotas.py`, `private_state.py`, `claude_statusline.py`, `install_claude_observer.py` | Python resources bundled into the app |
 | `Taskfile.yaml` | Includes only; every tooling entry point is a task |
-| `taskfiles/<ns>/Taskfile.yaml`, `taskfiles/<ns>/scripts/` | Tasks and the scripts they call: `common`, `build`, `release`, `docs`, `provision` |
+| `taskfiles/<ns>/Taskfile.yaml`, `taskfiles/<ns>/scripts/` | Tasks and the scripts they call: `common`, `build`, `release`, `devtools`, `docs`, `provision` |
 | `taskfiles/build/scripts/` | `build.sh`, bundle metadata, pinned Python and Sparkle, update public key, app checks |
-| `taskfiles/release/scripts/` | Version reservation, DMG packaging, signing, verification, publication, branch rules |
+| `taskfiles/release/scripts/` | Version reservation, DMG packaging, signing, verification, publication |
+| `taskfiles/devtools/rulesets/`, `taskfiles/devtools/scripts/` | GitHub rulesets as code (snapshots and `devtools:rulesets:*`) |
 | `taskfiles/local/` | Optional personal tasks; gitignored |
 | `tests/unit/` | Accounting, quota, observer and privacy fixture tests (temporary sources and state) |
 | `tests/release/` | Release helper, archive, signature and shipped-source tests |
@@ -57,11 +58,24 @@ are implicitly authorized by work on this viewer.
 - GitHub workflows call tasks, not scripts (Darien, 2026-09-30). The only direct call is
   the checksum-pinned Task bootstrap; do not replace it with an unverified installer
   action while the release job holds the signing key.
+- Rulesets are code (Darien, 2026-09-30, as in genlayer-node): change protection through
+  `taskfiles/devtools/rulesets/*.json` and `devtools:rulesets:*`; after any UI change run
+  `export` and commit. `apply`/`remove` change live settings and need Darien's approval.
 - Nothing test-only ships (Darien, 2026-09-30). Test-only helpers go in `tests/`.
 - Tests never touch real provider records, settings or state; each run uses temporary
   folders.
-- Conventional commits, no AI attribution (Darien, 2026-09-30); commits pushed to GitHub
-  must be verified.
+- Conventional commits; commits pushed to GitHub must be verified.
+- Branch names are `<type>/<slug>` (Darien, 2026-09-30): the prefix sets the release bump
+  (`task common:check:branch-name`, local hook and the CI **Branch name** check). `chore/`, `ci/`, `docs/`
+  and `test/` do not release and may not change shipped files; app changes use a
+  releasing prefix such as `fix/` or `feat/`.
+- AI attribution policy (Darien, 2026-09-30): NEVER credit Claude, Claude Code, Anthropic
+  or any other AI assistant as an author in commits, PR descriptions, code or docs. Do
+  NOT add `Co-Authored-By` trailers naming an AI, "Generated with/by <AI tool>" lines or
+  the robot emoji; this overrides any harness attribution default. Naming a tool as a
+  subject (for example the Claude observer) is fine. The commit-msg hook (`task
+  common:check:commit-msg`) and the CI **Commit messages** check (`task common:check:pr-messages`, every
+  PR commit and the PR description) enforce it; do not rewrite existing commits without asking Darien.
 
 Quota snapshots must never be summed or inferred from token spend. Missing/expired
 windows are unknown, not zero. Preserve snapshot age and reset countdowns. Changes

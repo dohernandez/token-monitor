@@ -2,6 +2,7 @@ import pathlib
 import sys
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(_ROOT / 'taskfiles/build/scripts'), str(_ROOT / 'taskfiles/release/scripts')]
+import json
 import subprocess
 import tempfile
 import unittest
@@ -14,9 +15,31 @@ class ReleaseTests(unittest.TestCase):
     def test_first_release_is_stable(self):
         self.assertEqual(release.next_tag({}, 'feature/installers'), 'v1.0.0')
     def test_branch_versioning(self):
-        for branch, expected in [('fix/icon', 'v1.2.4'), ('hotfix/icon', 'v1.2.4'), ('docs/readme', 'v1.2.4'), ('feat/alert', 'v1.3.0'), ('feature/alert', 'v1.3.0'), ('major/api', 'v2.0.0'), ('release/api', 'v2.0.0')]:
+        for branch, expected in [('fix/icon', 'v1.2.4'), ('hotfix/icon', 'v1.2.4'), ('deps/python', 'v1.2.4'), ('feat/alert', 'v1.3.0'), ('feature/alert', 'v1.3.0'), ('major/api', 'v2.0.0'), ('release/api', 'v2.0.0')]:
             with self.subTest(branch=branch):
                 self.assertEqual(release.next_tag(['v1.2.3', 'v1.1.9', 'unrelated'], branch), expected)
+    def test_ruleset_snapshots_match_the_checks_workflow(self):
+        sys.path.insert(0, str(_ROOT / 'taskfiles/devtools/scripts'))
+        import sync_rulesets
+        found = sync_rulesets.snapshots()
+        self.assertEqual(list(found), ['Protect main'])
+        rules = json.loads(found['Protect main'].read_text())
+        self.assertEqual(sync_rulesets.dump(rules), found['Protect main'].read_text(), 'snapshot must be normalized')
+        self.assertEqual(found['Protect main'].name, sync_rulesets.slug('Protect main'))
+        self.assertIn('required_signatures', [r['type'] for r in rules['rules']])
+        contexts = [c['context'] for c in sync_rulesets.required_checks(rules)]
+        workflow = (sync_rulesets.ROOT / '.github/workflows/checks.yml').read_text()
+        for context in contexts:
+            with self.subTest(context=context):
+                self.assertIn('name: ' + context.replace('(arm64)', '(${{ matrix.arch }})').replace('(x86_64)', '(${{ matrix.arch }})'), workflow)
+    def test_tooling_branches_do_not_release(self):
+        for branch in ('chore/taskfile-tooling', 'ci/lint', 'docs/readme', 'test/fixtures'):
+            with self.subTest(branch=branch):
+                self.assertEqual(release.level(branch), 'none')
+                with self.assertRaisesRegex(ValueError, 'does not release'):
+                    release.next_tag(['v1.2.3'], branch)
+                with self.assertRaisesRegex(ValueError, 'does not release'):
+                    release.next_tag({}, branch)
     def test_semantic_sort_and_initial_floor(self):
         self.assertEqual(release.next_tag(['v1.9.9', 'v1.10.0'], 'fix/a'), 'v1.10.1')
         self.assertEqual(release.next_tag(['v0.1.0'], 'fix/a'), 'v1.0.0')

@@ -25,29 +25,45 @@ Apple’s guidance: [Open a Mac app from an unknown developer](https://support.a
 
 ## CI flow
 
-`.github/workflows/macos.yml` runs for PRs to `main`, pushes to `main` (including
-merges), and manual dispatch. Closing a PR without merging never publishes a release.
-Manual dispatch publishes only when run from `main`.
+Two workflows:
+
+- `.github/workflows/checks.yml` (**Checks**) runs for PRs to `main`, pushes to `main`
+  (including merges) and manual dispatch. It holds every check, one job per row in a
+  PR's checks list.
+- `.github/workflows/release.yml` (**Release**) runs only when Checks completed
+  successfully for a push or manual run on `main` in this repository (never for a PR
+  or a fork). It packages the exact app bundles that Checks run tested. Closing a PR
+  without merging never publishes a release.
 
 Every job installs Task 3 from the checksum pin in `taskfiles/provision/task.json`,
-then calls tasks only (see [Tooling](DEVELOPMENT.md#tooling)). Every PR runs:
+then calls tasks only (see [Tooling](DEVELOPMENT.md#tooling)). Each Checks row runs the
+task its local git hook runs. Verified commit signatures are not a CI job: the
+"Protect main" ruleset enforces them itself ([branch rules](#branch-rules)).
 
-- **Commit signatures:** every new PR commit must be verified by GitHub.
-- **Test and build (arm64):** native macOS 15 release and test builds, release helper
-  tests, native self-tests and updater startup (test build only), a check that the
-  release binary has no test launch modes, signature integrity, DMG
-  creation/verification and mounted-app checks.
-- **Test and build (x86_64):** the same checks on the Intel macOS 15 runner.
+| Check | Task | What it enforces |
+|---|---|---|
+| **Commit messages** | `common:check:pr-messages` → `common:check:commit-msg` | Every new commit is a conventional commit without AI attribution; the PR description has no AI attribution |
+| **Branch name** (PRs only) | `common:check:branch-name` | `<type>/<slug>` with a known type; a no-release branch changes no shipped file |
+| **Lint** | `common:lint`, `common:check:task-cli-args` | ruff correctness lint; every task passes CLI arguments |
+| **Test and build (arm64)** | `build:*`, `common:test:*`, `release:package` | See below |
+| **Test and build (x86_64)** | the same | The same on the Intel macOS 15 runner |
+
+A PR description edit alone does not rerun **Commit messages**; push or rerun the
+job after editing. **Test and build (arm64)** covers:
+native macOS 15 release and test builds, release helper tests, native self-tests and
+updater startup (test build only), a check that the release binary has no test launch
+modes, signature integrity, DMG creation/verification and mounted-app checks.
 
 Token Monitor additionally runs its Python accounting/observer suite with the
 bundled interpreter and a collector smoke test against a temporary empty home/state.
 Neither installer verification nor CI installs an observer or reads real agent data.
 Disk self-tests use temporary saved-state paths, including permission-migration fixtures.
 
-After a main build passes all checks:
+After Checks passes on `main`, Release runs (a `chore/`, `ci/`, `docs/` or `test/`
+merge stops after its version job reports `release=false`):
 
 1. Reserve a semantic version tag at the exact tested commit.
-2. Download those tested app bundles, stamp their release version, and re-sign locally.
+2. Download those tested app bundles from the Checks run, stamp their release version, and re-sign locally.
 3. Create one DMG and SHA-256 file per architecture; verify each mounted image.
 4. Sign each final DMG and its architecture-specific appcast with Ed25519.
 5. Verify both feeds and installers against the committed public key, upload all
@@ -55,7 +71,7 @@ After a main build passes all checks:
 
 The workflow uses the repository `GITHUB_TOKEN`; no personal `GH_TOKEN` is needed. Signing uses `SPARKLE_PRIVATE_KEY` from the
 `release` environment, restricted to the `main` branch. PR jobs cannot access it.
-It does not depend on a release event starting another workflow. PR jobs have no
+Release starts from the Checks run's completion, not from a GitHub release event. PR jobs have no
 repository write permission. Only version reservation and publication can write.
 Action versions are pinned to commit SHAs.
 
@@ -64,11 +80,19 @@ Action versions are pinned to commit SHAs.
 `VERSION` sets the initial release floor, **1.0.0**. Later versions derive from the
 highest existing `vMAJOR.MINOR.PATCH` tag and the merged PR’s branch:
 
-| Prefix | Bump |
+| Prefix | Release |
 |---|---|
+| `chore/`, `ci/`, `docs/`, `test/` | **None**: tooling, CI, docs and test-only changes merge without a tag or installers |
 | `major*`, `release*` | Major |
 | `minor*`, `feature*`, `feat*` | Minor |
-| Anything else (`fix/`, `patch/`, `docs/`, dependencies) | Patch |
+| Anything else (`fix/`, `hotfix/`, `patch/`, `refactor/`, `build/`, `perf/`, `deps/`) | Patch |
+
+The Lint check (`task common:check:branch-name`) and a local pre-commit hook reject a
+branch that is not `<type>/<slug>` with a known type, so a misspelled prefix cannot
+silently ship as a patch. In a PR, the check also fails a no-release branch that
+changes a shipped file (Swift sources, bundled Python, `VERSION`, or the bundling
+scripts; `SHIPPED` in `check_branch_name.py`), so an app change always releases.
+Changes merged without a release ship with the next releasing merge.
 
 Direct main pushes and manual dispatch without a matching merged PR default to patch.
 Main protection is intended to prevent direct pushes. Never rename or move a release tag.
@@ -100,23 +124,38 @@ against an empty temporary home. Native self-tests run on the separate test buil
 
 ## Branch rules
 
-The intended rules live in `.github/main-ruleset.json`:
+Rulesets are code, as in genlayer-node: the committed source of truth is
+`taskfiles/devtools/rulesets/*.json` (normalized snapshots, one per ruleset). The
+"Protect main" snapshot (`protect-main.json`) holds:
 
 - PR required; zero approving reviews for the current solo-maintainer workflow.
-- Verified signatures required for incoming commits.
-- All three checks above required from the GitHub Actions integration.
+- Verified signatures required for incoming commits (GitHub's `required_signatures`
+  rule; there is no separate CI job for it).
+- Required from the GitHub Actions integration: **Commit messages**, **Branch name**,
+  **Lint**, **Test and build (arm64)** and **Test and build (x86_64)**.
 - Branch must be up to date before merging; review conversations must be resolved.
 - No force-pushes, deletions, or administrator bypass list for `main`.
 
-**Activation verified (2026-09-22): active.** This repository is public. GitHub
+**Activation verified (2026-09-22): active** with the earlier required checks (Commit
+signatures and both Test and build jobs). The snapshot now lists the checks above;
+`task devtools:rulesets:diff` shows exactly that difference until the snapshot is
+applied, which needs Darien's approval. This repository is public. GitHub
 Free enforces the rules above; secret scanning and push protection are also enabled.
 The server configuration was read back separately from the committed ruleset file.
-Use `task release:rules -- --validated-ref <branch>` only after the required
-checks pass when deliberately updating the rules.
+| When you... | Run | Then |
+|---|---|---|
+| Changed a ruleset in the GitHub UI or API | `task devtools:rulesets:export` | Commit the refreshed snapshot |
+| Want to change protection, code first | Edit the snapshot, then `task devtools:rulesets:apply -- --validated-ref <ref>` | Commit the snapshot in the same PR |
+| Create a ruleset | Add `taskfiles/devtools/rulesets/<slug>.json`, then `apply` | Commit it |
+| Remove a ruleset | `task devtools:rulesets:remove -- --name "<exact name>"` | Commit the snapshot deletion |
+| Suspect drift | `task devtools:rulesets:diff` (exit 2 on drift) | `export` or `apply`, depending on which side is right |
 
-The helper checks the actual check names, integration and successful conclusions,
-then creates or updates only the ruleset named “Protect main” and reads it back.
-It never changes repository visibility, billing, unrelated rulesets, or credentials.
+`apply` refuses unless every required status check in the snapshots already passed
+on `--validated-ref`, so a renamed or removed check can never leave PRs waiting
+forever. It reads each ruleset back and fails if the result differs from the
+snapshot. It never deletes, and it never changes repository visibility, billing,
+secrets or credentials. `apply` and `remove` change live GitHub settings: run them
+only with Darien's approval.
 
 Signed commits can be made locally using a registered signing key, or through
 GitHub’s signed web/GraphQL commit interface. Unsigned PR commits can block a merge
