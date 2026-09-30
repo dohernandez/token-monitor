@@ -73,18 +73,18 @@ tasks:
       - python3 ./taskfiles/common/scripts/check_task_cli_args.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
-  check:commit-message:
+  check:commit-msg:
     desc: Check a commit message (conventional commit, no AI attribution); the commit-msg hook runs it
     summary: |
       Usage:
-        task common:check:commit-message -- .git/COMMIT_EDITMSG
-        task common:check:commit-message -- --attribution-only pr-description.md
+        task common:check:commit-msg -- .git/COMMIT_EDITMSG
+        task common:check:commit-msg -- --attribution-only pr-description.md
     cmds:
       - python3 ./taskfiles/common/scripts/check_commit_message.py {{.CLI_ARGS}}
     dir: "{{.ROOT_DIR}}"
 
   check:pr-messages:
-    desc: Check every new commit message and the PR description for AI attribution (CI policy job; needs gh and GH_TOKEN)
+    desc: Check every new commit message and the PR description for AI attribution (CI Lint job; needs gh and GH_TOKEN)
     summary: |
       API-made commits skip local git hooks, so CI repeats the commit-msg check.
 

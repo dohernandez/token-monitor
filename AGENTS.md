@@ -65,9 +65,9 @@ are implicitly authorized by work on this viewer.
   or any other AI assistant as an author in commits, PR descriptions, code or docs. Do
   NOT add `Co-Authored-By` trailers naming an AI, "Generated with/by <AI tool>" lines or
   the robot emoji; this overrides any harness attribution default. Naming a tool as a
-  subject (for example the Claude observer) is fine. The commit-msg hook and the CI
-  policy job (`task common:check:pr-messages`, every PR commit and the PR description)
-  enforce it; do not rewrite existing commits without asking Darien.
+  subject (for example the Claude observer) is fine. The commit-msg hook (`task
+  common:check:commit-msg`) and the CI Lint job (`task common:check:pr-messages`, every
+  PR commit and the PR description) enforce it; do not rewrite existing commits without asking Darien.
 
 Quota snapshots must never be summed or inferred from token spend. Missing/expired
 windows are unknown, not zero. Preserve snapshot age and reset countdowns. Changes

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Reject AI attribution in commit messages (commit-msg hook) and, in CI, in every PR commit and the PR description.
+- Reject AI attribution in commit messages (commit-msg hook) and, in a new CI Lint job, in every PR commit and the PR description.
 - Move scripts into `taskfiles/<ns>/scripts/` and tests into `tests/unit/` and `tests/release/`.
 - Run all project tooling through `Taskfile.yaml` namespaces; CI installs a checksum-pinned Task and calls tasks only. Add pre-commit hooks for lint, task CLI arguments, fast tests and conventional commit messages.
 - Keep native test launch modes (`--self-test`, `--updater-self-test`, `--diagnostics`, `--show`) out of release builds; they compile only with `TEST_BUILD=1`.

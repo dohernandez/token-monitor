@@ -26,7 +26,7 @@ repos:
         stages: [pre-commit]
         files: \.(py|swift|sh)$
       - id: commit-message
-        name: conventional commit, no AI attribution (task common:check:commit-message)
-        entry: task common:check:commit-message --
+        name: conventional commit, no AI attribution (task common:check:commit-msg)
+        entry: task common:check:commit-msg --
         language: system
         stages: [commit-msg]
