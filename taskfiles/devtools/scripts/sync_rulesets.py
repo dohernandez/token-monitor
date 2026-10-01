@@ -70,9 +70,12 @@ def snapshots():
     return {json.loads(f.read_text())['name']: f for f in sorted(RULESETS.glob('*.json'))}
 
 
+def live_ids(name_of_repo):
+    return {r['name']: r['id'] for r in gh('--paginate', 'repos/%s/rulesets' % name_of_repo)}
+
+
 def live(name_of_repo):
-    rulesets = gh('--paginate', 'repos/%s/rulesets' % name_of_repo)
-    return {r['name']: gh('repos/%s/rulesets/%s' % (name_of_repo, r['id'])) for r in rulesets}
+    return {name: gh('repos/%s/rulesets/%s' % (name_of_repo, number)) for name, number in live_ids(name_of_repo).items()}
 
 
 def required_checks(ruleset):
@@ -130,7 +133,7 @@ def apply(name_of_repo, ref):
             if not matches or max(matches, key=lambda r: r['id'])['conclusion'] != 'success':
                 print("refused: '%s' requires '%s', which has not passed on %s" % (name, check['context'], ref), file=sys.stderr)
                 return 3
-    current = {r['name']: r['id'] for r in gh('--paginate', 'repos/%s/rulesets' % name_of_repo)}
+    current = live_ids(name_of_repo)
     for name, ruleset in wanted.items():
         body = json.dumps(ruleset)
         if name in current:
@@ -146,7 +149,7 @@ def apply(name_of_repo, ref):
 
 
 def remove(name_of_repo, name):
-    current = {r['name']: r['id'] for r in gh('--paginate', 'repos/%s/rulesets' % name_of_repo)}
+    current = live_ids(name_of_repo)
     path = RULESETS / slug(name)
     if name not in current and not path.exists():
         print("nothing named '%s' live or in %s" % (name, RULESETS.relative_to(ROOT)), file=sys.stderr)
